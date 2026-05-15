@@ -1,0 +1,38 @@
+# Build outputs
+bin/
+obj/
+*.dll
+*.exe
+*.pdb
+*.ilk
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.vcxproj.user
+
+# Temporary / test files
+*.tmp
+*.log
+steam_appid.txt
+
+# Large binary assets (we usually don't want these in git)
+*.mix
+*.meg
+*.vqa
+*.aud
+*.shp
+*.tem
+*.des
+
+# Published builds (we'll manage these separately or via releases)
+Published/
+
+# OS junk
+Thumbs.db
+.DS_Store
+
+# Personal notes
+notes.txt
+TODO-personal.md

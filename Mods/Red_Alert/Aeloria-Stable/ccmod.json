@@ -1,0 +1,9 @@
+{
+  "name": "Aeloria-Stable",
+  "description": "Project Aeloria - Stable Quality of Life improvements for Red Alert Remastered. Smart harvesters, rally points, better pathfinding, and modern conveniences while staying faithful to classic gameplay.",
+  "author": "Jackson",
+  "load_order": 5,
+  "version_low": 1,
+  "version_high": 0,
+  "game_type": "RA"
+}

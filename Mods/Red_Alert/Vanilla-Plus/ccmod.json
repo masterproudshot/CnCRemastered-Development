@@ -1,0 +1,9 @@
+{
+  "name": "Vanilla-Plus",
+  "description": "Minimal safe baseline with only the most essential QoL from Project Aeloria. Intended as an easy rollback target.",
+  "author": "Jackson",
+  "load_order": 5,
+  "version_low": 1,
+  "version_high": 0,
+  "game_type": "RA"
+}

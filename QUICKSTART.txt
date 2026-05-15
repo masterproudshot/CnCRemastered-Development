@@ -1,0 +1,25 @@
+Project Aeloria - Quick Start
+
+1. Open this folder in Explorer:
+   Development/
+
+2. To test right now (once you have a DLL):
+   - Double-click any .bat in the Launchers/ folder
+
+3. To start serious development:
+   - Read Docs/00-Project-Vision.md
+   - Read Docs/01-Getting-Started-Building.md
+   - Open Source/Rampastring-MoreQoL/CnCRemastered.sln in Visual Studio
+
+4. Current mod profiles live in:
+   Development/Mods/Red_Alert/
+
+5. When you're ready to test in the real game (Documents folder):
+   Copy the contents of Development/Mods/Red_Alert/Aeloria-*/ 
+   into 
+   C:\Users\jacks\Documents\CnCRemastered\Mods\Red_Alert\
+
+This separation keeps your development clean and safe.
+
+Project started: May 2026
+Foundation: Rampastring "More QoL Improvements"

@@ -1,0 +1,9 @@
+{
+  "name": "Aeloria-Experimental",
+  "description": "Project Aeloria - Experimental build. Contains new and untested features. Use at your own risk.",
+  "author": "Jackson",
+  "load_order": 5,
+  "version_low": 1,
+  "version_high": 0,
+  "game_type": "RA"
+}
