@@ -23,11 +23,13 @@ The goal is fast, chain-style wall building (similar to Tiberian Sun / Red Alert
 
 ---
 
-## Key Settings (from [MoreQoL] section)
+## Key Settings (from [AeloriaWalls] section)
 
-- `MaxWallExtensionDistance` (default 4–10 in QoL mods)
-- `WallSellPriceDivisor`
-- `WallsAlwaysHaveFullCost`
+- `MaxWallExtensionDistance` — How far a single wall placement action can extend
+- `WallSellPriceDivisor` — Makes selling chain-built walls less profitable
+- Falls back to `[MoreQoL]` for compatibility
+
+Note: These have been moved to the dedicated `[AeloriaWalls]` section as part of Project Aeloria's configuration cleanup.
 
 ---
 
@@ -80,12 +82,19 @@ The goal is fast, chain-style wall building (similar to Tiberian Sun / Red Alert
 
 ---
 
+## Recent Improvements (Project Aeloria Moderate Cleanup)
+
+- Wall settings moved to dedicated `[AeloriaWalls]` INI section
+- `Extend_Wall()` function received improved comments and slightly cleaner structure
+- `MaxWallExtensionDistance` and `WallSellPriceDivisor` are now consistently loaded from the Aeloria section
+
 ## Sign-off Checklist
 
 - [ ] Chain wall building works smoothly on all wall types
 - [ ] Wall costs feel balanced (not too cheap, not punishing)
 - [ ] Selling walls does not generate profit
 - [ ] No pathfinding bugs around newly built walls
+- [ ] `[AeloriaWalls]` section is being read correctly
 
 ---
 
