@@ -25,10 +25,12 @@ Q-Move allows you to queue multiple movement orders for units (similar to modern
 
 ## Key INI Settings
 
-From `[MoreQoL]` section:
+From `[AeloriaQMove]` section (Project Aeloria):
 - `QmoveLoopsAllowed`
 - `AirQMoveAllowed`
 - `AirQRecallAllowed`
+
+Falls back to `[MoreQoL]` for compatibility.
 
 ---
 
