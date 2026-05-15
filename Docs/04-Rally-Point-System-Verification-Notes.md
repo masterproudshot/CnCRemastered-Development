@@ -29,10 +29,11 @@ Rally points are one of the most loved features from the original "More QoL" mod
 
 - `BuildingClass::Can_Have_Rally_Point()`
 - `BuildingClass::Target_For_Rally_Point()`
+- `BuildingClass::HasRallyPoint()`, `ClearRallyPoint()`, `SendUnitToRallyPoint()` (new Project Aeloria helpers)
 - `BuildingClass::RallyPoint` member
-- Logic in `Receive_Message(RADIO_UNLOADED)`
+- Logic in `Receive_Message(RADIO_UNLOADED)` (now routes through `SendUnitToRallyPoint`)
 - Logic in `Active_Click_With` and `What_Action`
-- Harvester-specific handling in `UNIT.CPP` (the `InitHarvest` flag we touched during harvester cleanup)
+- `[AeloriaRallyPoints]` INI section (new dedicated section)
 
 ---
 
@@ -187,12 +188,37 @@ Because we made changes to `FindBestRefinery()` and the harvester state machine,
 
 ---
 
+## Recent Structural Improvements (Moderate Cleanup)
+
+### New Helpers
+- `HasRallyPoint()` — Replaces repetitive checks.
+- `ClearRallyPoint()` — Explicit method to clear a rally point.
+- `SetRallyPoint(TARGET)` — Central setter (designed as future hook for multiplayer network events).
+- `SendUnitToRallyPoint(TechnoClass*)` — Central place for sending units to rally points, including special harvester `InitHarvest` logic.
+
+### Configuration
+- Added `[AeloriaRallyPoints]` INI section (supports `RallyPointsEnabled`).
+- Falls back to `[MoreQoL]` for compatibility during transition.
+
+### Code Quality
+- Introduced a clean set of helpers: `HasRallyPoint()`, `ClearRallyPoint()`, `SetRallyPoint()`, and `SendUnitToRallyPoint()`.
+- `Can_Have_Rally_Point()` now respects `Rule.RallyPointsEnabled` at the top level.
+- Rally point setting is now centralized through `SetRallyPoint()` (future network event hook).
+- Harvester + refinery interaction is fully encapsulated in `SendUnitToRallyPoint()`.
+- Significant reduction in duplicated inline rally point logic across the building code.
+
+### Known Limitations
+- Rally point assignment is still not multiplayer-safe (direct member modification). `SetRallyPoint()` exists as the designated future extension point for adding proper network events.
+
+---
+
 ## Sign-off Checklist
 
 - [ ] All TC-101 to TC-605 pass on Experimental
-- [ ] Harvester + Refinery rally point interaction works as expected after our harvester changes
+- [ ] New helpers are used consistently
+- [ ] `[AeloriaRallyPoints]` section is being read
 - [ ] No visual or functional regression compared to original Rampastring "More QoL"
-- [ ] Behavior is consistent when promoting to Stable profile
+- [ ] Harvester + Refinery rally point interaction works correctly
 
 ---
 
