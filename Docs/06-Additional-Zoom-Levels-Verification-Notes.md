@@ -28,7 +28,9 @@ Most of this feature lives in the XML override file:
 
 `GameConstants_Mod.xml` → `<CNCZoomFactors>`
 
-This is **not** a DLL change in most cases — it’s a data override. However, some zoom behavior can be influenced by the DLL.
+This is primarily a data override. However, Project Aeloria now supports an `[AeloriaZoom]` INI section for future control (e.g. `MaxZoomLevel`, `ZoomSpeed`).
+
+The settings have been moved to the dedicated `[AeloriaZoom]` section as part of Project Aeloria's configuration cleanup.
 
 ---
 
@@ -78,12 +80,18 @@ This is **not** a DLL change in most cases — it’s a data override. However, 
 
 ---
 
+## Recent Improvements (Project Aeloria)
+
+- Added `[AeloriaZoom]` INI section with `MaxZoomLevel` and `ZoomSpeed` settings.
+- Zoom configuration is now part of the unified Aeloria system.
+
 ## Sign-off Checklist
 
 - [ ] Significantly more zoom out than vanilla is available
 - [ ] Zoom levels feel well-spaced and usable
 - [ ] No major visual or input bugs at extreme zoom levels
 - [ ] Performance is still playable at max zoom out
+- [ ] `[AeloriaZoom]` section is being read correctly
 
 ---
 
