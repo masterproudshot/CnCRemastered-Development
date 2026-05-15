@@ -187,12 +187,38 @@ These are noted here but **not** part of the Moderate cleanup:
 
 ---
 
+## Recent Structural Improvements (Moderate Cleanup)
+
+### New Configuration Section: `[AeloriaHarvesters]`
+
+- All harvester-specific tunables should now be placed under `[AeloriaHarvesters]` in the INI.
+- Current supported values:
+  - `MaxFreeRefineryDistanceBias`
+  - `MinHarvesterQueueJumpDistance`
+- Falls back to `[MoreQoL]` for backward compatibility.
+
+### New Helpers Added
+
+- `FindBestRefinery(bool friendly)` — Single source of truth for smart refinery selection.
+- `RememberDockingBay(BuildingClass*)` — Consistent management of `LastDockingBayCoord`.
+- `RememberLastHarvestLocation(CELL)`, `ClearLastHarvestLocation()`, `GetLastHarvestLocation()` — Clean wrapper around the harvester memory system (previously direct `ArchiveTarget` manipulation).
+
+### Code Quality Goals Achieved
+
+- All major "harvester needs to go home" paths now go through `FindBestRefinery()`.
+- `LastDockingBayCoord` is managed through a single helper.
+- Harvester memory logic has dedicated, well-named methods.
+- Significantly reduced direct manipulation of low-level fields in `Mission_Harvest`.
+
+---
+
 ## Sign-off Checklist
 
 - [ ] TC-101 to TC-506 all pass on Experimental
 - [ ] No regressions compared to previous Rampastring behavior
 - [ ] Behavior matches between Experimental and Stable after promotion
-- [ ] Notes added for any remaining quirks
+- [ ] `[AeloriaHarvesters]` INI section is being read correctly
+- [ ] New helpers are used consistently across code paths
 
 ---
 
