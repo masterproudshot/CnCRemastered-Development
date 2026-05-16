@@ -1,23 +1,18 @@
 @echo off
 :: ============================================================
-:: Project Aeloria - Experimental Profile Launcher
+:: Project Aeloria - Experimental Launcher (Improved)
 :: ============================================================
-:: Use this when testing new / risky changes.
-:: Still fast direct launch.
+:: This version properly launches through Steam for best compatibility.
 
-set GAME_PATH=C:\Program Files (x86)\Steam\steamapps\common\CnCRemastered
+set STEAM_EXE="C:\Program Files (x86)\Steam\steam.exe"
+set APP_ID=1213210
 set MOD_NAME=Aeloria-Experimental
-set APPID=1213210
 
 echo.
-echo [Project Aeloria] Launching EXPERIMENTAL profile...
-echo WARNING: This may contain untested or breaking changes.
+echo [Project Aeloria] Launching EXPERIMENTAL version...
+echo Mod: %MOD_NAME%
 echo.
 
-cd /d "%GAME_PATH%"
-echo %APPID% > steam_appid.txt
+start "" %STEAM_EXE% -applaunch %APP_ID% REDALERT MOD=%MOD_NAME% MOD_DEBUG -FastLaunch
 
-start "" "ClientG.exe" REDALERT MOD=%MOD_NAME% MOD_DEBUG -FastLaunch
-
-echo Launched Experimental build.
-pause >nul
+exit

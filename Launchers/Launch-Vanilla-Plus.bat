@@ -1,21 +1,17 @@
 @echo off
 :: ============================================================
-:: Project Aeloria - Vanilla-Plus Launcher (Safe Baseline)
+:: Project Aeloria - Vanilla-Plus Launcher (Improved)
 :: ============================================================
-:: Minimal changes. Use this to verify that a crash is caused by Aeloria.
+:: Minimal baseline for comparison.
 
-set GAME_PATH=C:\Program Files (x86)\Steam\steamapps\common\CnCRemastered
+set STEAM_EXE="C:\Program Files (x86)\Steam\steam.exe"
+set APP_ID=1213210
 set MOD_NAME=Vanilla-Plus
-set APPID=1213210
 
 echo.
-echo [Project Aeloria] Launching VANILLA-PLUS (safe baseline)...
+echo [Project Aeloria] Launching VANILLA-PLUS baseline...
 echo.
 
-cd /d "%GAME_PATH%"
-echo %APPID% > steam_appid.txt
+start "" %STEAM_EXE% -applaunch %APP_ID% REDALERT MOD=%MOD_NAME% -FastLaunch
 
-start "" "ClientG.exe" REDALERT MOD=%MOD_NAME% -FastLaunch
-
-echo Vanilla-Plus launched.
-pause >nul
+exit

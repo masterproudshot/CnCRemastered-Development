@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<GameConstants>
+	<GameConstantsClass>
+		<CNCZoomFactors network="client" overwrite="true">
+			<ZoomFactor>0.25</ZoomFactor>
+			<ZoomFactor>0.40</ZoomFactor>
+			<ZoomFactor>0.55</ZoomFactor>
+			<ZoomFactor>0.70</ZoomFactor>
+			<ZoomFactor>0.85</ZoomFactor>
+			<ZoomFactor>1.0</ZoomFactor>
+			<ZoomFactor>1.15</ZoomFactor>
+			<ZoomFactor>1.30</ZoomFactor>
+			<ZoomFactor>1.50</ZoomFactor>
+			<ZoomFactor>1.70</ZoomFactor>
+			<ZoomFactor>1.90</ZoomFactor>
+			<ZoomFactor>2.1</ZoomFactor>
+			<ZoomFactor>2.3</ZoomFactor>
+			<ZoomFactor>2.5</ZoomFactor>
+			<ZoomFactor>2.8</ZoomFactor>
+			<ZoomFactor>3.1</ZoomFactor>
+			<ZoomFactor>3.5</ZoomFactor>
+			<ZoomFactor>4.0</ZoomFactor>
+		</CNCZoomFactors>
+	</GameConstantsClass>
+</GameConstants>

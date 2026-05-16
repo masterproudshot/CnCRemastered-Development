@@ -1,26 +1,26 @@
-Project Aeloria - Fast Launchers
+Project Aeloria - Launchers (Updated Version)
 
-These batch files let you launch Red Alert Remastered directly with your mod pre-selected,
-bypassing the slow in-game mod menu and multiple restarts.
+These batch files now use the recommended method of launching through Steam itself.
+This is more reliable than directly running ClientG.exe.
 
-Usage:
-- Double-click the desired .bat file
-- The game will launch straight into Red Alert with the chosen profile active
+How to use:
+- Double-click the .bat file you want to run.
+- Steam will launch Red Alert with the selected mod automatically.
 
 Available Launchers:
-- Launch-Aeloria-Stable.bat          → Daily driver (only tested features)
-- Launch-Aeloria-Experimental.bat    → New / risky changes
-- Launch-Aeloria-Debug.bat           → For Visual Studio debugging (attach after launch)
-- Launch-Vanilla-Plus.bat            → Minimal safe baseline for comparison
+- Launch-Aeloria-Experimental.bat   → For testing new changes
+- Launch-Aeloria-Stable.bat         → Your main daily driver
+- Launch-Vanilla-Plus.bat           → Clean baseline for comparison
+- Launch-Aeloria-Debug.bat          → For attaching debuggers (MOD_DEBUG enabled)
 
-How it works:
-- Uses direct ClientG.exe execution
-- steam_appid.txt trick for faster startup
-- MOD= parameter auto-selects the correct mod from your Documents folder
-- REDALERT skips the game selection screen
+Important:
+- Steam must be running (or it will start automatically).
+- Make sure your mod folder exists in:
+  Development/Mods/Red_Alert/[ModName]/
+  with a Data/RedAlert.dll inside it.
 
-Note:
-These launchers assume your compiled RedAlert.dll is already placed in the
-corresponding folder under Development/Mods/Red_Alert/<Profile>/Data/
+Customizing:
+If your Steam is installed in a different location, edit the STEAM_EXE line in the .bat file.
 
-After building a new DLL, just copy it into the right Data/ folder and re-launch.
+Example:
+set STEAM_EXE="D:\Steam\steam.exe"
