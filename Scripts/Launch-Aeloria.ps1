@@ -1,40 +1,27 @@
 <#
 .SYNOPSIS
-    Project Aeloria - Robust Launcher (State Machine + Heavy Logging)
+    Project Aeloria launcher for Red Alert Remastered.
 
 .DESCRIPTION
-    Professional-grade launcher with:
-    - Explicit state machine
-    - Very detailed logging at every step
-    - Proper error handling and early failure
-    - Full copy + backup/restore deployment (reliable)
-    - Automatic latest crash report capture
-    - Defensive cleanup even on crash/force-close
-    - Debug mode and optional MSBuild support
-    - Clear final summary with log + crash report paths
-    - -AutoDeployDll : Auto-copy newest built RedAlert.dll from VS output into the selected Development profile before deploying
+    Robust launcher with state machine, heavy logging, automatic DLL deployment,
+    backups, and crash report capture.
 
-    Goal: Make the "rebuild -> test" loop reliable and observable.
+Options:
+  -Profile <name>     - Target profile (Experimental, Stable, or Vanilla-Plus).
+                        Shows interactive selector if omitted.
+  -DebugMode          - Launch the game with debug flags enabled.
+  -BuildFirst         - Run MSBuild before deploying. Only activates if explicitly passed (no interactive prompt).
+  -AutoDeployDll      - Auto-copy the newest built RedAlert.dll from Visual Studio
+                        into the profile's Development folder.
+  -ForceCleanup       - Force cleanup of backup and temp folders.
+  -h, -?              - Show this help.
 
-    Note: After changes to function.h / wwstd.h, always Clean + Rebuild in VS (global packing define corrupts structs).
+Profiles:
+  Experimental        - Latest changes, may be unstable. Use for active development.
+  Stable              - Recommended for normal play. Good balance of features and stability.
+  Vanilla-Plus        - Minimal changes, closest to vanilla with light QoL.
 
-.PARAMETER Profile
-    Target profile: Experimental, Stable, or Vanilla-Plus. Interactive selector shown if omitted (auto-recommends newest DLL).
-
-.PARAMETER DebugMode
-    Launch game with debug flags. Prompts interactively if omitted.
-
-.PARAMETER BuildFirst
-    Trigger MSBuild step before deploy/launch. Command-line use skips the interactive "Build the DLL first using MSBuild?" prompt.
-
-.PARAMETER ForceCleanup
-    Reserved for forced cleanup operations.
-
-.PARAMETER AutoDeployDll
-    Auto-copy newest built RedAlert.dll from VS output dirs into the profile's Development Data\ folder before deploying.
-
-.PARAMETER Help
-    Display this help text and exit. -h, --help, -Help and -? are all supported.
+Note: After editing function.h / wwstd.h / packing headers, always Clean + Rebuild in Visual Studio.
 #>
 
 [CmdletBinding()]
@@ -45,16 +32,8 @@ param(
     [switch]$DebugMode,
     [switch]$BuildFirst,
     [switch]$ForceCleanup,
-    [switch]$AutoDeployDll,
-    [Alias("h", "help")]
-    [switch]$Help
+    [switch]$AutoDeployDll
 )
-
-# Early handler: support -h/--help/-Help/-? via comment-based help (in addition to native -?)
-if ($Help) {
-    Get-Help -Name $MyInvocation.MyCommand.Path -Full
-    exit 0
-}
 
 $ErrorActionPreference = "Stop"
 
@@ -383,11 +362,8 @@ try {
     }
 
     # Build first?
-    if (-not $BuildFirst) {
-        $b = Read-Host "Build the DLL first using MSBuild? (y/n)"
-        $BuildFirst = ($b -eq 'y' -or $b -eq 'Y')
-    }
-
+    # Only build if -BuildFirst was explicitly passed on the command line.
+    # We no longer prompt for this — if you want a build, pass the flag.
     if ($BuildFirst) {
         Set-Variable -Name CurrentState -Scope Script -Value ([LauncherState]::Building)
         Write-Log "Starting MSBuild..." "INFO"
