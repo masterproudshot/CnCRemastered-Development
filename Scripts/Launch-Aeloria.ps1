@@ -7,14 +7,21 @@
     backups, and crash report capture.
 
 Options:
-  -Profile <name>     - Target profile (Experimental, Stable, or Vanilla-Plus).
+  -P, -Profile <name>   Target profile (Experimental, Stable, or Vanilla-Plus).
                         Shows interactive selector if omitted.
-  -DebugMode          - Launch the game with debug flags enabled.
-  -BuildFirst         - Run MSBuild before deploying. Only activates if explicitly passed (no interactive prompt).
-  -AutoDeployDll      - Auto-copy the newest built RedAlert.dll from Visual Studio
+  -D, -DebugMode        Launch the game with debug flags (MOD_DEBUG) and force Aeloria verbose draw
+                        diagnostics logging on via AELORIA_ENABLE_VERBOSE_DRAW_LOGS=1 env var.
+                        This makes the full per-object "got Object / guard passed / about-to-call" logs
+                        appear in Aeloria_Debug.log (the "debugmode flag flips the loggins switch on").
+  -B, -BuildFirst       Build the RedAlert project using MSBuild before deploying the DLL.
+                        Auto-detects MSBuild.exe (prefers vswhere, falls back to common VS 2019/2022 paths).
+                        Only activates if explicitly passed on the command line (no interactive prompt).
+  -A, -AutoDeployDll    Auto-copy the newest built RedAlert.dll from Visual Studio
                         into the profile's Development folder.
-  -ForceCleanup       - Force cleanup of backup and temp folders.
-  -h, -?              - Show this help.
+                        When used together with -DebugMode it will also search Debug build folders
+                        and the verbose logging env var will be active for the whole session.
+  -F, -ForceCleanup     Force cleanup of backup and temp folders.
+  -h, -?                Show this help.
 
 Profiles:
   Experimental        - Latest changes, may be unstable. Use for active development.
@@ -27,15 +34,102 @@ Note: After editing function.h / wwstd.h / packing headers, always Clean + Rebui
 [CmdletBinding()]
 param(
     [ValidateSet("Experimental","Stable","Vanilla-Plus")]
+    [Alias("P")]
     [string]$Profile,
 
+    [Alias("D")]
     [switch]$DebugMode,
+
+    [Alias("B")]
     [switch]$BuildFirst,
+
+    [Alias("F")]
     [switch]$ForceCleanup,
+
+    [Alias("A")]
     [switch]$AutoDeployDll
 )
 
 $ErrorActionPreference = "Stop"
+
+# ====================== HELPER FUNCTIONS ======================
+
+function Get-MSBuildPath {
+    <#
+    .SYNOPSIS
+        Locates MSBuild.exe from Visual Studio or Build Tools installation.
+        Tries vswhere first (most reliable), then falls back to common paths.
+    #>
+    $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+
+    if (Test-Path $vswhere) {
+        try {
+            $installPath = & $vswhere -latest -requires Microsoft.Component.MSBuild -property installationPath 2>$null | Select-Object -First 1
+            if ($installPath) {
+                $msbuild = Join-Path $installPath "MSBuild\Current\Bin\MSBuild.exe"
+                if (Test-Path $msbuild) {
+                    return $msbuild
+                }
+            }
+        } catch {
+            # vswhere failed, fall through to hardcoded paths
+        }
+    }
+
+    # Common fallback locations (VS 2022 and 2019)
+    $candidates = @(
+        "${env:ProgramFiles}\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe",
+        "${env:ProgramFiles}\Microsoft Visual Studio\2022\Professional\MSBuild\Current\Bin\MSBuild.exe",
+        "${env:ProgramFiles}\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\MSBuild.exe",
+        "${env:ProgramFiles(x86)}\Microsoft Visual Studio\2022\BuildTools\MSBuild\Current\Bin\MSBuild.exe",
+        "${env:ProgramFiles(x86)}\Microsoft Visual Studio\2019\Community\MSBuild\Current\Bin\MSBuild.exe",
+        "${env:ProgramFiles(x86)}\Microsoft Visual Studio\2019\Professional\MSBuild\Current\Bin\MSBuild.exe",
+        "${env:ProgramFiles(x86)}\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\MSBuild.exe"
+    )
+
+    foreach ($path in $candidates) {
+        if (Test-Path $path) {
+            return $path
+        }
+    }
+
+    return $null
+}
+
+function Invoke-AutoDeployDll {
+    Write-Log "AutoDeployDll requested - looking for newest RedAlert.dll in build output..." "INFO"
+
+    if ($DebugMode) {
+        Write-Log "  DebugMode active - will also search Debug build output folders (great when you build Debug config in VS)" "INFO"
+    }
+
+    $buildCandidates = @(
+        # Release outputs (normal builds)
+        "$ProjectRoot\Source\Rampastring-MoreQoL\bin\Win32\RedAlert.dll",
+        "$ProjectRoot\Source\Rampastring-MoreQoL\bin\Release\RedAlert.dll",
+        "$ProjectRoot\Source\Rampastring-MoreQoL\x86\Release\RedAlert.dll",
+        # Debug outputs
+        "$ProjectRoot\Source\Rampastring-MoreQoL\bin\Debug\RedAlert.dll",
+        "$ProjectRoot\Source\Rampastring-MoreQoL\bin\Win32\Debug\RedAlert.dll",
+        "$ProjectRoot\Source\Rampastring-MoreQoL\x86\Debug\RedAlert.dll"
+    )
+
+    $newestDll = $buildCandidates |
+                 Where-Object { Test-Path $_ } |
+                 Sort-Object LastWriteTime -Descending |
+                 Select-Object -First 1
+
+    if ($newestDll) {
+        $targetPath = Join-Path $script:SelectedProfile.DevPath "Data\RedAlert.dll"
+        Copy-Item -Path $newestDll -Destination $targetPath -Force
+        Write-Log "Auto-copied newest DLL -> $($script:SelectedProfile.Name) Development profile" "INFO"
+        if ($DebugMode -and $newestDll -match '[\\/]Debug[\\/]') {
+            Write-Log "  (picked from a Debug build output folder because -DebugMode was used)" "INFO"
+        }
+    } else {
+        Write-Log "No built RedAlert.dll found in expected output folders. Using whatever exists in Development profile." "WARN"
+    }
+}
 
 # ====================== CONFIGURATION ======================
 $ProjectRoot = "C:\Users\jacks\Documents\CnCRemastered\Development"
@@ -93,9 +187,10 @@ function Set-State([LauncherState]$NewState) {
 
 function Write-Log {
     param(
-        [Parameter(Mandatory=$true)][string]$Message,
+        [Parameter(Mandatory=$false)][AllowEmptyString()][string]$Message,
         [string]$Level = "INFO"
     )
+    if ([string]::IsNullOrWhiteSpace($Message)) { return }
     $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss.fff"
     $line = "[$timestamp] [$Level] $Message"
     Write-Host $line
@@ -331,44 +426,77 @@ try {
     $script:SelectedProfile = $Profiles[$Profile]
     Write-Log "Final selected profile: $($script:SelectedProfile.Name)" "INFO"
 
-    # Auto-deploy newest built DLL into the Development profile (safer than direct to live)
-    if ($AutoDeployDll) {
-        Write-Log "AutoDeployDll requested - looking for newest RedAlert.dll in build output..." "INFO"
+    # Debug mode decision + env var setup - do this *very early* (right after profile)
+    # so that -AutoDeployDll, -BuildFirst, and every later step can react to it.
+    # Note: We no longer prompt interactively. Pass -DebugMode (or -D) explicitly if desired.
 
-        $buildCandidates = @(
-            "$ProjectRoot\Source\Rampastring-MoreQoL\bin\Win32\RedAlert.dll",
-            "$ProjectRoot\Source\Rampastring-MoreQoL\bin\Release\RedAlert.dll",
-            "$ProjectRoot\Source\Rampastring-MoreQoL\x86\Release\RedAlert.dll"
-        )
-
-        $newestDll = $buildCandidates |
-                     Where-Object { Test-Path $_ } |
-                     Sort-Object LastWriteTime -Descending |
-                     Select-Object -First 1
-
-        if ($newestDll) {
-            $targetPath = Join-Path $script:SelectedProfile.DevPath "Data\RedAlert.dll"
-            Copy-Item -Path $newestDll -Destination $targetPath -Force
-            Write-Log "Auto-copied newest DLL -> $($script:SelectedProfile.Name) Development profile" "INFO"
-        } else {
-            Write-Log "No built RedAlert.dll found in expected output folders. Using whatever exists in Development profile." "WARN"
-        }
+    if ($DebugMode) {
+        $env:AELORIA_ENABLE_VERBOSE_DRAW_LOGS = "1"
+        Write-Log "DebugMode is active for this session: AELORIA_ENABLE_VERBOSE_DRAW_LOGS=1 (verbose draw logs will be enabled in the DLL)" "INFO"
+    } else {
+        # Explicitly set to "0" so child processes (Steam + game) definitely see verbose logging as OFF.
+        # This is more reliable than just Remove-Item for ensuring normal play is silent.
+        $env:AELORIA_ENABLE_VERBOSE_DRAW_LOGS = "0"
+        Write-Log "Normal (non-Debug) session: AELORIA_ENABLE_VERBOSE_DRAW_LOGS explicitly set to 0 (verbose draw logs should be suppressed)" "INFO"
     }
 
-    # Debug mode
-    if (-not $DebugMode) {
-        $d = Read-Host "Launch in Debug mode? (y/n)"
-        $DebugMode = ($d -eq 'y' -or $d -eq 'Y')
+    # Auto-deploy newest built DLL into the Development profile (safer than direct to live)
+    # We defer AutoDeploy if -BuildFirst is also passed (we want to deploy the *new* build).
+    $ShouldAutoDeployNow = $AutoDeployDll -and -not $BuildFirst
+    $DeployAfterSuccessfulBuild = $AutoDeployDll -and $BuildFirst
+
+    if ($ShouldAutoDeployNow) {
+        Invoke-AutoDeployDll
     }
 
     # Build first?
     # Only build if -BuildFirst was explicitly passed on the command line.
-    # We no longer prompt for this — if you want a build, pass the flag.
+    # We no longer prompt for this - if you want a build, pass the flag.
     if ($BuildFirst) {
         Set-Variable -Name CurrentState -Scope Script -Value ([LauncherState]::Building)
-        Write-Log "Starting MSBuild..." "INFO"
-        # (MSBuild logic here - simplified for now)
-        Write-Log "Build step requested but not fully implemented in this version." "WARN"
+        $solutionPath = "$ProjectRoot\Source\Rampastring-MoreQoL\CnCRemastered.sln"
+
+        $msbuildPath = Get-MSBuildPath
+        if (-not $msbuildPath) {
+            Write-Log "ERROR: Could not locate MSBuild.exe." "ERROR"
+            Write-Log "Please install Visual Studio 2019/2022 (with 'MSBuild' workload) or the standalone Build Tools." "ERROR"
+            throw "MSBuild.exe not found on this system."
+        }
+
+        $msbuildArgs = "`"$solutionPath`" /t:RedAlert /p:Configuration=Release /p:Platform=x86 /verbosity:minimal /nologo"
+        Write-Log "Starting MSBuild for RedAlert project..." "INFO"
+        Write-Log "Using MSBuild: $msbuildPath" "INFO"
+        Write-Log "Command: `"$msbuildPath`" $msbuildArgs" "INFO"
+
+        try {
+            $msbuildOutput = & $msbuildPath "$solutionPath" /t:RedAlert /p:Configuration=Release /p:Platform=x86 /verbosity:minimal /nologo 2>&1
+            $exitCode = $LASTEXITCODE
+
+            if ($msbuildOutput) {
+                $msbuildOutput | ForEach-Object {
+                    $msg = $_ -as [string]
+                    if (-not [string]::IsNullOrWhiteSpace($msg)) {
+                        Write-Log $msg "MSBUILD"
+                    }
+                }
+            }
+
+            if ($exitCode -ne 0) {
+                Write-Log "MSBuild failed with exit code $exitCode." "ERROR"
+                throw "Build failed with exit code $exitCode. Check the MSBUILD lines above for errors."
+            }
+
+            Write-Log "MSBuild succeeded (exit code 0)." "INFO"
+
+            # If the user passed both -BuildFirst and -AutoDeployDll, deploy the fresh build now.
+            if ($DeployAfterSuccessfulBuild) {
+                Write-Log "Build completed successfully - now deploying the new DLL..." "INFO"
+                Invoke-AutoDeployDll
+            }
+        } catch {
+            Write-Log "ERROR during build step: $_" "ERROR"
+            throw
+        }
     }
 
     # Backup + Deploy
@@ -384,7 +512,7 @@ try {
     $launchArgs = "REDALERT MOD=$($script:SelectedProfile.Name) -FastLaunch"
     if ($DebugMode) {
         $launchArgs += " MOD_DEBUG NO_EVENT_HANDLER"
-        Write-Log "Debug flags added to launch arguments." "INFO"
+        Write-Log "Debug flags (MOD_DEBUG) added to launch arguments. (Verbose logging env var was already set for the whole session above.)" "INFO"
     }
 
     Write-Log "Launching via Steam with arguments: $launchArgs" "INFO"
