@@ -36,3 +36,23 @@ Thumbs.db
 # Personal notes
 notes.txt
 TODO-personal.md
+# === Aeloria Stable Baseline Additions ===
+
+# Personal editor / tool files
+$MYVIMRC
+.viminfo
+*.swp
+
+# Crash reports and logs
+CrashReports/
+*.log
+
+# Backup and temp files
+*.bak
+*.tmp
+
+# Deprecated / personal launcher stuff
+Launchers/Deprecated/
+
+# Personal / local scripts
+Scripts/Rebuild-And-Deploy.ps1
