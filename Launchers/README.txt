@@ -19,6 +19,10 @@ Important:
   Development/Mods/Red_Alert/[ModName]/
   with a Data/RedAlert.dll inside it.
 
+New in 2026: Use `Launch-Aeloria.ps1 -Profile Stable -NoCleanup` (or -Permanent / -NC)
+when you want the mod to stay deployed in your live Documents folder after the game exits.
+This makes the simple .bat launchers continue to work for daily play without re-running the full ps1.
+
 Customizing:
 If your Steam is installed in a different location, edit the STEAM_EXE line in the .bat file.
 

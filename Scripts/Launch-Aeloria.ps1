@@ -12,7 +12,12 @@ Options:
   -D, -DebugMode        Launch the game with debug flags (MOD_DEBUG) and force Aeloria verbose draw
                         diagnostics logging on via AELORIA_ENABLE_VERBOSE_DRAW_LOGS=1 env var.
                         This makes the full per-object "got Object / guard passed / about-to-call" logs
-                        appear in Aeloria_Debug.log (the "debugmode flag flips the loggins switch on").
+                        appear in Aeloria_Debug.log.
+                        **Strongly recommended for any long test, stability investigation, or custom map play.**
+                        In debug mode the launcher uses immediate process-exit detection (Wait-Process).
+                        As soon as you close the game, the script continues instantly with no polling delays.
+                        The Aeloria debug log is automatically collected into the Logs\ folder with a matching
+                        short ID for easy correlation with the launcher log.
   -B, -BuildFirst       Build the RedAlert project using MSBuild before deploying the DLL.
                         Auto-detects MSBuild.exe (prefers vswhere, falls back to common VS 2019/2022 paths).
                         Only activates if explicitly passed on the command line (no interactive prompt).
@@ -21,6 +26,10 @@ Options:
                         When used together with -DebugMode it will also search Debug build folders
                         and the verbose logging env var will be active for the whole session.
   -F, -ForceCleanup     Force cleanup of backup and temp folders.
+  -NC, -NoCleanup, -Permanent
+                        Do not remove the deployed mod folder after the game exits.
+                        Use this when you want a permanent install (e.g. daily Stable driver)
+                        so that the simple .bat launchers keep working afterward.
   -h, -?                Show this help.
 
 Profiles:
@@ -29,6 +38,10 @@ Profiles:
   Vanilla-Plus        - Minimal changes, closest to vanilla with light QoL.
 
 Note: After editing function.h / wwstd.h / packing headers, always Clean + Rebuild in Visual Studio.
+
+IMPORTANT FOR TESTING: For any long session, custom map, or stability investigation, always use -DebugMode (-D).
+This enables the rich per-object guard logging that is essential for diagnosing invisibility and exemption issues.
+Without it you will only see the heavily rate-limited SEVERE messages.
 #>
 
 [CmdletBinding()]
@@ -47,7 +60,12 @@ param(
     [switch]$ForceCleanup,
 
     [Alias("A")]
-    [switch]$AutoDeployDll
+    [switch]$AutoDeployDll,
+
+    # Do not remove the deployed mod folder from the live Documents location after the game exits.
+    # Use this for "daily driver" Stable use so that simple .bat launchers continue to work afterward.
+    [Alias("NC", "Permanent")]
+    [switch]$NoCleanup
 )
 
 $ErrorActionPreference = "Stop"
@@ -180,6 +198,16 @@ $script:BackupPath = $null
 $script:SelectedProfile = $null
 $script:LatestCrashReport = $null
 
+# Generate a short unique ID (8-4 hex format) similar to the Python script the user provided.
+# Uses [guid]::NewGuid() + first 6 bytes for good per-session uniqueness.
+function New-ShortLogId {
+    $guid = [guid]::NewGuid()
+    $bytes = $guid.ToByteArray()
+    $selected = $bytes[0..5]
+    $hex = ($selected | ForEach-Object { $_.ToString('x2') }) -join ''
+    return "$($hex.Substring(0,8))-$($hex.Substring(8,4))"
+}
+
 function Set-State([LauncherState]$NewState) {
     $script:CurrentState = $NewState
     Write-Log "STATE TRANSITION -> $NewState" "STATE"
@@ -203,10 +231,22 @@ function Initialize-Logging {
     if (-not (Test-Path $LogDir))  { New-Item -ItemType Directory -Path $LogDir  -Force | Out-Null }
     if (-not (Test-Path $CrashDir)) { New-Item -ItemType Directory -Path $CrashDir -Force | Out-Null }
 
-    $script:LogFile = Join-Path $LogDir "Launch-Aeloria_$(Get-Date -Format 'yyyyMMdd_HHmmss_fff').log"
+    $timestamp = Get-Date -Format 'yyyyMMdd_HHmmss_fff'
+
+    if ($script:DebugShortId) {
+        # In debug mode, include the short ID for easy correlation with Aeloria debug logs
+        $script:LogFile = Join-Path $LogDir "Launch-Aeloria_$($timestamp)_$($script:DebugShortId).log"
+    } else {
+        $script:LogFile = Join-Path $LogDir "Launch-Aeloria_$timestamp.log"
+    }
+
     Write-Log "=== Project Aeloria Launcher Started ===" "INFO"
     Write-Log "PowerShell Version: $($PSVersionTable.PSVersion)" "INFO"
     Write-Log "Running as Administrator: $([bool]([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator))" "INFO"
+
+    if ($script:DebugShortId) {
+        Write-Log "Debug session short ID: $($script:DebugShortId)" "INFO"
+    }
 }
 
 function Get-NewestProfile {
@@ -366,23 +406,32 @@ function Wait-ForGameExit {
 
     $processes = @("ClientG", "InstanceServerG")
     $timeoutSeconds = 900   # 15 minutes max play session
+
+    # In debug mode we want *immediate* detection the moment you close the game.
+    # No polling delays, no minimum runtime guard. The launcher should react instantly.
+    if ($script:IsDebugMode) {
+        Write-Log "Debug mode: using immediate process exit detection (no delays)." "INFO"
+
+        # Wait-Process blocks until the named processes are gone.
+        # This gives near-instant reaction when you exit the game.
+        Wait-Process -Name $processes -ErrorAction SilentlyContinue -Timeout $timeoutSeconds
+
+        Write-Log "Game processes have exited (detected immediately)." "INFO"
+        return
+    }
+
+    # === Normal (non-debug) path ===
     $checkInterval = 3
     $elapsed = 0
-    $minimumRuntime = 45    # Don't allow cleanup until game has been visibly running for at least 45 seconds
 
     while ($elapsed -lt $timeoutSeconds) {
         $running = Get-Process -Name $processes -ErrorAction SilentlyContinue
 
         if (-not $running) {
-            if ($elapsed -ge $minimumRuntime) {
-                Write-Log "Game processes have exited after visible runtime of $elapsed seconds." "INFO"
-                return
-            } else {
-                Write-Log "Processes disappeared too early ($elapsed sec). Waiting to confirm..." "DEBUG"
-                Start-Sleep -Seconds 5
-                $elapsed += 5
-                continue
-            }
+            # The game processes are gone. Exit the monitoring immediately.
+            # No "too early" waiting or artificial delays when you intentionally close the game.
+            Write-Log "Game processes have exited (detected immediately)." "INFO"
+            return
         }
 
         Start-Sleep -Seconds $checkInterval
@@ -397,6 +446,13 @@ function Wait-ForGameExit {
 }
 
 # ====================== MAIN EXECUTION ======================
+
+# Generate short ID early for debug sessions (used for log naming and correlation)
+if ($DebugMode) {
+    $script:DebugShortId = New-ShortLogId
+} else {
+    $script:DebugShortId = $null
+}
 
 Initialize-Logging
 Set-Variable -Name CurrentState -Scope Script -Value ([LauncherState]::Initializing)
@@ -426,12 +482,22 @@ try {
     $script:SelectedProfile = $Profiles[$Profile]
     Write-Log "Final selected profile: $($script:SelectedProfile.Name)" "INFO"
 
+    $script:NoCleanup = $NoCleanup
+    if ($script:NoCleanup) {
+        Write-Log "-NoCleanup / -Permanent requested. Live mod folder will NOT be removed after exit." "INFO"
+    }
+
+    $script:IsDebugMode = $DebugMode
+
     # Debug mode decision + env var setup - do this *very early* (right after profile)
     # so that -AutoDeployDll, -BuildFirst, and every later step can react to it.
     # Note: We no longer prompt interactively. Pass -DebugMode (or -D) explicitly if desired.
 
     if ($DebugMode) {
         $env:AELORIA_ENABLE_VERBOSE_DRAW_LOGS = "1"
+        if ($script:DebugShortId) {
+            $env:AELORIA_LOG_SESSION_ID = $script:DebugShortId
+        }
         Write-Log "DebugMode is active for this session: AELORIA_ENABLE_VERBOSE_DRAW_LOGS=1 (verbose draw logs will be enabled in the DLL)" "INFO"
     } else {
         # Explicitly set to "0" so child processes (Steam + game) definitely see verbose logging as OFF.
@@ -500,11 +566,30 @@ try {
     }
 
     # Backup + Deploy
-    Set-Variable -Name CurrentState -Scope Script -Value ([LauncherState]::BackingUp)
-    $script:BackupPath = Backup-ExistingMod $script:SelectedProfile.LivePath
+    if ($script:NoCleanup) {
+        Write-Log "NoCleanup / Permanent mode: skipping backup of existing live folder." "INFO"
+        $script:BackupPath = $null
+    } else {
+        Set-Variable -Name CurrentState -Scope Script -Value ([LauncherState]::BackingUp)
+        $script:BackupPath = Backup-ExistingMod $script:SelectedProfile.LivePath
+    }
 
     Set-Variable -Name CurrentState -Scope Script -Value ([LauncherState]::Deploying)
     Deploy-Profile $script:SelectedProfile.DevPath $script:SelectedProfile.LivePath
+
+    # Quick post-deploy verification (especially useful for -NoCleanup / Experimental)
+    $liveGc = Join-Path $script:SelectedProfile.LivePath "GameConstants_Mod.xml"
+    if (Test-Path $liveGc) {
+        $gcSize = (Get-Item $liveGc).Length
+        $zoomCount = (Get-Content $liveGc | Select-String "ZoomFactor" | Measure-Object).Count
+        Write-Log "Post-deploy check: GameConstants_Mod.xml size=$gcSize bytes, ZoomFactor count=$zoomCount" "INFO"
+    }
+
+    $liveDll = Join-Path $script:SelectedProfile.LivePath "Data\RedAlert.dll"
+    if (Test-Path $liveDll) {
+        $dllInfo = Get-Item $liveDll
+        Write-Log "Post-deploy check: RedAlert.dll size=$($dllInfo.Length) bytes, Modified=$($dllInfo.LastWriteTime)" "INFO"
+    }
 
     # Launch
     Set-Variable -Name CurrentState -Scope Script -Value ([LauncherState]::Launching)
@@ -534,14 +619,61 @@ try {
     Write-Log "Entering cleanup phase..." "INFO"
 
     if ($script:SelectedProfile -and (Test-Path $script:SelectedProfile.LivePath)) {
-        Remove-Item $script:SelectedProfile.LivePath -Recurse -Force -ErrorAction SilentlyContinue
-        Write-Log "Deployed folder removed." "INFO"
+        if ($script:NoCleanup) {
+            Write-Log "NoCleanup mode: leaving deployed folder at $($script:SelectedProfile.LivePath)" "INFO"
+        } else {
+            Remove-Item $script:SelectedProfile.LivePath -Recurse -Force -ErrorAction SilentlyContinue
+            Write-Log "Deployed folder removed." "INFO"
+        }
     }
 
-    Restore-Backup $script:BackupPath $script:SelectedProfile.LivePath
+    if (-not $script:NoCleanup) {
+        Restore-Backup $script:BackupPath $script:SelectedProfile.LivePath
+    } else {
+        Write-Log "NoCleanup mode: skipping restore of previous backup (keeping fresh deploy)." "INFO"
+    }
 
     if ($script:LatestCrashReport) {
         Write-Log "Latest crash report available at: $($script:LatestCrashReport)" "WARN"
+    }
+
+    # In debug mode, always attempt to collect the Aeloria debug log (even on clean exits)
+    # so we don't lose diagnostic data on "clean" process exits that are actually stability-related.
+    if ($script:DebugShortId) {
+        $aeloriaLogPatterns = @(
+            "$env:USERPROFILE\Aeloria-Debug-*.log",
+            "C:\Users\jacks\Aeloria-Debug-*.log",
+            ".\Aeloria-Debug-*.log",
+            "$LogDir\Aeloria-Debug-*.log"
+        )
+
+        $foundLog = $null
+        $launchStartTime = (Get-Item $script:LogFile).CreationTime
+
+        foreach ($pattern in $aeloriaLogPatterns) {
+            $candidates = Get-ChildItem -Path $pattern -ErrorAction SilentlyContinue |
+                          Where-Object { $_.LastWriteTime -gt $launchStartTime.AddMinutes(-2) } |
+                          Sort-Object LastWriteTime -Descending
+
+            if ($candidates) {
+                $foundLog = $candidates[0]
+                break
+            }
+        }
+
+        if ($foundLog) {
+            $newName = "Aeloria-Debug_$(Get-Date -Format 'yyyyMMdd_HHmmss')_$($script:DebugShortId).log"
+            $destPath = Join-Path $LogDir $newName
+            try {
+                Move-Item -Path $foundLog.FullName -Destination $destPath -Force -ErrorAction Stop
+                Write-Log "Collected Aeloria debug log → $destPath" "INFO"
+                Write-Host "Aeloria Debug Log: $destPath" -ForegroundColor Cyan
+            } catch {
+                Write-Log "WARNING: Failed to collect Aeloria debug log from $($foundLog.FullName)" "WARN"
+            }
+        } else {
+            Write-Log "No recent Aeloria debug log found to collect." "DEBUG"
+        }
     }
 
     Write-Log "=== FINAL STATE: $($script:CurrentState) ===" "INFO"
@@ -551,4 +683,11 @@ try {
         Write-Host "Crash report: $($script:LatestCrashReport)" -ForegroundColor Yellow
     }
     Write-Host "State: $($script:CurrentState)" -ForegroundColor Green
+    if ($script:NoCleanup) {
+        Write-Host "NoCleanup/Permanent mode was used - mod left in live folder for .bat use." -ForegroundColor Yellow
+    }
+    if ($script:DebugShortId) {
+        Write-Host "Debug short ID: $($script:DebugShortId)" -ForegroundColor Cyan
+        Write-Host "  Aeloria debug log (with full per-object guard logs) was collected next to this file." -ForegroundColor DarkGray
+    }
 }
