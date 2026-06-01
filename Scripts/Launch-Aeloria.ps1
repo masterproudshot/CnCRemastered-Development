@@ -197,6 +197,7 @@ $script:LogFile = $null
 $script:BackupPath = $null
 $script:SelectedProfile = $null
 $script:LatestCrashReport = $null
+$script:CollectedAeloriaDebugLog = $null
 
 # Generate a short unique ID (8-4 hex format) similar to the Python script the user provided.
 # Uses [guid]::NewGuid() + first 6 bytes for good per-session uniqueness.
@@ -529,13 +530,21 @@ try {
             throw "MSBuild.exe not found on this system."
         }
 
+        # When running in DebugMode (-D), force a full Rebuild instead of incremental Build.
+        # This guarantees that edits to CONQUER.CPP / DLLInterface.cpp (the main Aeloria files)
+        # are always picked up, even if MSBuild's incremental logic thinks the project is up-to-date.
+        # Critical for fast iteration during stability / visibility debugging.
         $msbuildArgs = "`"$solutionPath`" /t:RedAlert /p:Configuration=Release /p:Platform=x86 /verbosity:minimal /nologo"
+        if ($DebugMode) {
+            Write-Log "DebugMode active - forcing full Rebuild of RedAlert project (not incremental)." "INFO"
+        }
         Write-Log "Starting MSBuild for RedAlert project..." "INFO"
         Write-Log "Using MSBuild: $msbuildPath" "INFO"
         Write-Log "Command: `"$msbuildPath`" $msbuildArgs" "INFO"
 
         try {
-            $msbuildOutput = & $msbuildPath "$solutionPath" /t:RedAlert /p:Configuration=Release /p:Platform=x86 /verbosity:minimal /nologo 2>&1
+            $effectiveTarget = if ($DebugMode) { "RedAlert:Rebuild" } else { "RedAlert" }
+            $msbuildOutput = & $msbuildPath "$solutionPath" /t:$effectiveTarget /p:Configuration=Release /p:Platform=x86 /verbosity:minimal /nologo 2>&1
             $exitCode = $LASTEXITCODE
 
             if ($msbuildOutput) {
@@ -666,10 +675,26 @@ try {
             $destPath = Join-Path $LogDir $newName
             try {
                 Move-Item -Path $foundLog.FullName -Destination $destPath -Force -ErrorAction Stop
-                Write-Log "Collected Aeloria debug log → $destPath" "INFO"
+                $script:CollectedAeloriaDebugLog = $destPath
+                Write-Log "Collected Aeloria debug log -> $destPath" "INFO"
                 Write-Host "Aeloria Debug Log: $destPath" -ForegroundColor Cyan
             } catch {
                 Write-Log "WARNING: Failed to collect Aeloria debug log from $($foundLog.FullName)" "WARN"
+            }
+
+            # Always try to show a tail of the debug log on the console (on its own clear lines)
+            # so that when the user pastes the launcher output, we get the recent Aeloria
+            # breadcrumbs (PRE_PLACEHOLDER, PLACEHOLDER_*, HARD_REJECT, ages, stability, etc.)
+            # with zero extra steps. Uses plain ASCII and limited tail to avoid huge output.
+            if (Test-Path -LiteralPath $destPath) {
+                Write-Host ""
+                Write-Host ">>> AELORIA DEBUG LOG TAIL (last 250 lines - include when reporting crashes):" -ForegroundColor Yellow
+                try {
+                    Get-Content -LiteralPath $destPath -Tail 250 -ErrorAction Stop | ForEach-Object { Write-Host "    $_" }
+                } catch {
+                    Write-Host "    (could not read tail of debug log)" -ForegroundColor DarkYellow
+                }
+                Write-Host "### END AELORIA DEBUG LOG TAIL ###" -ForegroundColor Yellow
             }
         } else {
             Write-Log "No recent Aeloria debug log found to collect." "DEBUG"
@@ -679,6 +704,9 @@ try {
     Write-Log "=== FINAL STATE: $($script:CurrentState) ===" "INFO"
     Write-Host "`n=== LAUNCHER SESSION SUMMARY ===" -ForegroundColor Cyan
     Write-Host "Log file: $($script:LogFile)" -ForegroundColor White
+    if ($script:CollectedAeloriaDebugLog) {
+        Write-Host "Aeloria Debug Log: $($script:CollectedAeloriaDebugLog)" -ForegroundColor Cyan
+    }
     if ($script:LatestCrashReport) {
         Write-Host "Crash report: $($script:LatestCrashReport)" -ForegroundColor Yellow
     }
@@ -688,6 +716,6 @@ try {
     }
     if ($script:DebugShortId) {
         Write-Host "Debug short ID: $($script:DebugShortId)" -ForegroundColor Cyan
-        Write-Host "  Aeloria debug log (with full per-object guard logs) was collected next to this file." -ForegroundColor DarkGray
+        Write-Host "  See the two log paths listed directly above in this summary." -ForegroundColor DarkGray
     }
 }
