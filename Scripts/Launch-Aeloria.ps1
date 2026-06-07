@@ -14,12 +14,17 @@ Options:
                         This makes the full per-object "got Object / guard passed / about-to-call" logs
                         appear in Aeloria_Debug.log (the "debugmode flag flips the loggins switch on").
   -B, -BuildFirst       Build the RedAlert project using MSBuild before deploying the DLL.
-                        Auto-detects MSBuild.exe (prefers vswhere, falls back to common VS 2019/2022 paths).
+                        Prefers 2017-era MSBuild (for PlatformToolset=v145) when the VS 2017 C++ build tools
+                        (v141/v145) components are installed via Visual Studio Installer. Always forces
+                        /p:PlatformToolset=v145 for struct/ODR/early-object compatibility on custom maps.
                         Only activates if explicitly passed on the command line (no interactive prompt).
   -A, -AutoDeployDll    Auto-copy the newest built RedAlert.dll from Visual Studio
                         into the profile's Development folder.
                         When used together with -DebugMode it will also search Debug build folders
                         and the verbose logging env var will be active for the whole session.
+  -NC, -NoCleanup       Leave the mod deployed to the live location after launch (no backup restore,
+                        no removal of the deployed folder). Use this + -A to permanently update your
+                        daily driver Aeloria-Stable for normal play via the .bat launcher.
   -F, -ForceCleanup     Force cleanup of backup and temp folders.
   -h, -?                Show this help.
 
@@ -47,7 +52,10 @@ param(
     [switch]$ForceCleanup,
 
     [Alias("A")]
-    [switch]$AutoDeployDll
+    [switch]$AutoDeployDll,
+
+    [Alias("NC")]
+    [switch]$NoCleanup
 )
 
 $ErrorActionPreference = "Stop"
@@ -57,34 +65,40 @@ $ErrorActionPreference = "Stop"
 function Get-MSBuildPath {
     <#
     .SYNOPSIS
-        Locates MSBuild.exe from Visual Studio or Build Tools installation.
-        Tries vswhere first (most reliable), then falls back to common paths.
+        Locates MSBuild.exe.
+        We strongly prefer a 2017-era MSBuild if present (for v145 toolset),
+        but will fall back to your current Visual Studio (e.g. VS 18/2022).
+        The important part is that we ALWAYS force /p:PlatformToolset=v145 on the build.
+        This requires that you have the VS 2017 (v141/v145) C++ build tools *components* installed
+        via Visual Studio Installer (see Docs or the note printed on -B).
     #>
     $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
 
     if (Test-Path $vswhere) {
         try {
-            $installPath = & $vswhere -latest -requires Microsoft.Component.MSBuild -property installationPath 2>$null | Select-Object -First 1
+            # Try to find any VS 2017 installation first (best compatibility for early object / packing)
+            $installPath = & $vswhere -version "[15.0,16.0)" -requires Microsoft.Component.MSBuild -property installationPath 2>$null | Select-Object -First 1
             if ($installPath) {
-                $msbuild = Join-Path $installPath "MSBuild\Current\Bin\MSBuild.exe"
-                if (Test-Path $msbuild) {
-                    return $msbuild
+                $msbuild2017 = Join-Path $installPath "MSBuild\15.0\Bin\MSBuild.exe"
+                if (Test-Path $msbuild2017) {
+                    return $msbuild2017
                 }
             }
         } catch {
-            # vswhere failed, fall through to hardcoded paths
+            # vswhere failed, fall through
         }
     }
 
-    # Common fallback locations (VS 2022 and 2019)
+    # Hardcoded fallbacks (newest first, 2017 15.0 paths for when v141/v145 components are installed side-by-side)
     $candidates = @(
+        "${env:ProgramFiles}\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\MSBuild.exe",
+        "${env:ProgramFiles(x86)}\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\MSBuild.exe",
         "${env:ProgramFiles}\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe",
-        "${env:ProgramFiles}\Microsoft Visual Studio\2022\Professional\MSBuild\Current\Bin\MSBuild.exe",
-        "${env:ProgramFiles}\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\MSBuild.exe",
         "${env:ProgramFiles(x86)}\Microsoft Visual Studio\2022\BuildTools\MSBuild\Current\Bin\MSBuild.exe",
-        "${env:ProgramFiles(x86)}\Microsoft Visual Studio\2019\Community\MSBuild\Current\Bin\MSBuild.exe",
-        "${env:ProgramFiles(x86)}\Microsoft Visual Studio\2019\Professional\MSBuild\Current\Bin\MSBuild.exe",
-        "${env:ProgramFiles(x86)}\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\MSBuild.exe"
+        # 2017-era (these will be present if you installed the v141/v145 components into a VS 2017 or side-by-side)
+        "${env:ProgramFiles(x86)}\Microsoft Visual Studio\2017\BuildTools\MSBuild\15.0\Bin\MSBuild.exe",
+        "${env:ProgramFiles(x86)}\Microsoft Visual Studio\2017\Community\MSBuild\15.0\Bin\MSBuild.exe",
+        "${env:ProgramFiles(x86)}\Microsoft Visual Studio\2019\Community\MSBuild\Current\Bin\MSBuild.exe"
     )
 
     foreach ($path in $candidates) {
@@ -426,6 +440,13 @@ try {
     $script:SelectedProfile = $Profiles[$Profile]
     Write-Log "Final selected profile: $($script:SelectedProfile.Name)" "INFO"
 
+    # NoCleanup / NC: when set, we deploy (if -A) but leave the live mod folder in place after the session
+    # so that Launch-Aeloria-Stable.bat (or Steam MOD=) will continue to use the updated bits for normal play.
+    $script:NoCleanup = $NoCleanup
+    if ($script:NoCleanup) {
+        Write-Log "NoCleanup mode: deployed mod will be left in the live location (no restore at end)." "INFO"
+    }
+
     # Debug mode decision + env var setup - do this *very early* (right after profile)
     # so that -AutoDeployDll, -BuildFirst, and every later step can react to it.
     # Note: We no longer prompt interactively. Pass -DebugMode (or -D) explicitly if desired.
@@ -459,17 +480,25 @@ try {
         $msbuildPath = Get-MSBuildPath
         if (-not $msbuildPath) {
             Write-Log "ERROR: Could not locate MSBuild.exe." "ERROR"
-            Write-Log "Please install Visual Studio 2019/2022 (with 'MSBuild' workload) or the standalone Build Tools." "ERROR"
+            Write-Log "Please install Visual Studio (with MSBuild workload) or the standalone Build Tools." "ERROR"
+            Write-Log "For best compatibility with early object creation and custom 4p skirmish (struct layout, vtable, RTTI), install the VS 2017 C++ build tools components:" "ERROR"
+            Write-Log "  Visual Studio Installer -> Modify your VS 18/2022 -> Individual components -> search 'v141' or '2017' -> 'MSVC v141 - VS 2017 C++ x86/x64 build tools'." "ERROR"
             throw "MSBuild.exe not found on this system."
         }
 
-        $msbuildArgs = "`"$solutionPath`" /t:RedAlert /p:Configuration=Release /p:Platform=x86 /verbosity:minimal /nologo"
-        Write-Log "Starting MSBuild for RedAlert project..." "INFO"
+        # Always force PlatformToolset=v145 (2017-era) for struct packing / ODR / early-RTTI-object compatibility.
+        # The .vcxproj specifies it, but we pass explicitly to guarantee the right compiler/linker even under newer VS.
+        $msbuildArgs = "`"$solutionPath`" /t:RedAlert /p:Configuration=Release /p:Platform=x86 /p:PlatformToolset=v145 /verbosity:minimal /nologo"
+        Write-Log "Starting MSBuild for RedAlert project (forcing PlatformToolset=v145 for 2017-era struct/early-object compatibility)..." "INFO"
         Write-Log "Using MSBuild: $msbuildPath" "INFO"
+        if ($msbuildPath -notmatch '2017|15\.0') {
+            Write-Log "NOTE: Using modern MSBuild (VS 18/2022+). This works if the VS 2017 C++ v141/v145 components are installed via the Installer (Individual components)." "INFO"
+        }
         Write-Log "Command: `"$msbuildPath`" $msbuildArgs" "INFO"
 
         try {
-            $msbuildOutput = & $msbuildPath "$solutionPath" /t:RedAlert /p:Configuration=Release /p:Platform=x86 /verbosity:minimal /nologo 2>&1
+            $effectiveTarget = if ($DebugMode) { "RedAlert:Rebuild" } else { "RedAlert" }
+            $msbuildOutput = & $msbuildPath "$solutionPath" /t:$effectiveTarget /p:Configuration=Release /p:Platform=x86 /p:PlatformToolset=v145 /verbosity:minimal /nologo 2>&1
             $exitCode = $LASTEXITCODE
 
             if ($msbuildOutput) {
@@ -533,12 +562,21 @@ try {
     Set-Variable -Name CurrentState -Scope Script -Value ([LauncherState]::CleaningUp)
     Write-Log "Entering cleanup phase..." "INFO"
 
-    if ($script:SelectedProfile -and (Test-Path $script:SelectedProfile.LivePath)) {
-        Remove-Item $script:SelectedProfile.LivePath -Recurse -Force -ErrorAction SilentlyContinue
-        Write-Log "Deployed folder removed." "INFO"
-    }
+    if (-not $script:NoCleanup) {
+        if ($script:SelectedProfile -and (Test-Path $script:SelectedProfile.LivePath)) {
+            Remove-Item $script:SelectedProfile.LivePath -Recurse -Force -ErrorAction SilentlyContinue
+            Write-Log "Deployed folder removed." "INFO"
+        }
 
-    Restore-Backup $script:BackupPath $script:SelectedProfile.LivePath
+        Restore-Backup $script:BackupPath $script:SelectedProfile.LivePath
+    } else {
+        Write-Log "NoCleanup active - leaving live mod folder as-is (for daily driver use via .bat / Steam MOD=)." "INFO"
+        # Still clean a backup we took if present (user can ForceCleanup separately if they want it gone)
+        if ($script:BackupPath -and (Test-Path $script:BackupPath)) {
+            # Leave the .bak for safety, but do not restore it. User can manually delete later.
+            Write-Log "Backup left at: $($script:BackupPath) (not restored due to -NoCleanup)" "INFO"
+        }
+    }
 
     if ($script:LatestCrashReport) {
         Write-Log "Latest crash report available at: $($script:LatestCrashReport)" "WARN"
