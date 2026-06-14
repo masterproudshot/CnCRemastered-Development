@@ -282,6 +282,7 @@ function Initialize-Logging {
         $script:LogFile = Join-Path $LogDir "Launch-Aeloria_$timestamp.log"
     }
 
+    $script:SessionStartTime = Get-Date
     Write-Log "=== Project Aeloria Launcher Started ===" "INFO"
     Write-Log "PowerShell Version: $($PSVersionTable.PSVersion)" "INFO"
     Write-Log "Running as Administrator: $([bool]([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator))" "INFO"
@@ -394,6 +395,10 @@ function Restore-Backup($backupPath, $livePath) {
 }
 
 function Capture-LatestCrashReport {
+    param(
+        [datetime]$NotOlderThan = $script:SessionStartTime
+    )
+
     Write-Log "Checking for crash reports..." "INFO"
     if (-not (Test-Path $CrashSource)) {
         Write-Log "Crash source directory does not exist: $CrashSource" "DEBUG"
@@ -401,16 +406,17 @@ function Capture-LatestCrashReport {
     }
 
     $latest = Get-ChildItem -Path $CrashSource -Filter "InstanceServerG-exe_*.zip" -ErrorAction SilentlyContinue |
+              Where-Object { $_.LastWriteTime -ge $NotOlderThan } |
               Sort-Object LastWriteTime -Descending | Select-Object -First 1
 
     if ($latest) {
         $destName = "Crash_$(Get-Date -Format 'yyyyMMdd_HHmmss').zip"
         $destPath = Join-Path $CrashDir $destName
         Copy-Item -Path $latest.FullName -Destination $destPath -Force
-        Write-Log "Captured latest crash report: $destPath" "WARN"
+        Write-Log "Captured crash report from this session: $destPath (source: $($latest.Name), $($latest.LastWriteTime))" "WARN"
         return $destPath
     }
-    Write-Log "No crash reports found." "INFO"
+    Write-Log "No crash reports from this session (ignoring stale zips before $NotOlderThan)." "INFO"
     return $null
 }
 
