@@ -638,10 +638,9 @@ try {
         Write-Log "Normal (non-Debug) session: AELORIA_ENABLE_VERBOSE_DRAW_LOGS explicitly set to 0 (verbose draw logs should be suppressed)" "INFO"
     }
 
-    # Auto-deploy newest built DLL into the Development profile (safer than direct to live)
-    # We defer AutoDeploy if -BuildFirst is also passed (we want to deploy the *new* build).
+    # Stage newest built DLL into the Development profile before copying to live.
+    # -A alone: stage from last build output. -B: always re-stage after MSBuild (even without -A).
     $ShouldAutoDeployNow = $AutoDeployDll -and -not $BuildFirst
-    $DeployAfterSuccessfulBuild = $AutoDeployDll -and $BuildFirst
 
     if ($ShouldAutoDeployNow) {
         Invoke-AutoDeployDll
@@ -697,11 +696,9 @@ try {
 
             Write-Log "MSBuild succeeded (exit code 0)." "INFO"
 
-            # If the user passed both -BuildFirst and -AutoDeployDll, deploy the fresh build now.
-            if ($DeployAfterSuccessfulBuild) {
-                Write-Log "Build completed successfully - now deploying the new DLL..." "INFO"
-                Invoke-AutoDeployDll
-            }
+            # Always stage the fresh build into the Development profile so -B -NC cannot deploy a stale Dev DLL.
+            Write-Log "Build completed successfully - staging fresh DLL into Development profile..." "INFO"
+            Invoke-AutoDeployDll
         } catch {
             Write-Log "ERROR during build step: $_" "ERROR"
             throw
