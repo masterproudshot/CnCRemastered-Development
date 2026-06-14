@@ -483,12 +483,15 @@ function Start-CnCRemasteredGame {
 
     $steam = Ensure-SteamReady
 
-    if ($steam.PreExisting -and $steam.Ready -and (Test-Path -LiteralPath $ClientGExe)) {
-        Write-Log "Launching ClientG.exe directly (Steam was already running): $LaunchArgs" "INFO"
-        Start-Process -FilePath $ClientGExe -ArgumentList $LaunchArgs -WorkingDirectory $ClientGDir
-    } elseif ($steam.Ready) {
-        # Steam pre-started with -silent; -applaunch uses authorized path and keeps Steam open after exit.
-        Write-Log "Launching via Steam -applaunch (pre-started client; stays open after game exit): $LaunchArgs" "INFO"
+    # Always -applaunch from the ps1 dev launcher. Direct ClientG.exe can fail DRM even when
+    # steam.exe is present (partial bootstrap). Pre-starting Steam with -silent then -applaunch
+    # keeps the full client open after game exit; relaunches skip the 25s init wait when PreExisting.
+    if ($steam.Ready) {
+        if ($steam.PreExisting) {
+            Write-Log "Launching via Steam -applaunch (Steam already running; fast relaunch path): $LaunchArgs" "INFO"
+        } else {
+            Write-Log "Launching via Steam -applaunch (after pre-started client + DRM init wait): $LaunchArgs" "INFO"
+        }
         Start-Process -FilePath $SteamExe -ArgumentList "-applaunch $AppId $LaunchArgs"
     } else {
         Write-Log "Launching via cold Steam -applaunch fallback: $LaunchArgs" "WARN"
