@@ -1,0 +1,53 @@
+# Project Aeloria - Line ending policy for reliable WSL + Windows development
+# Prevents the massive eol-only diffs that appeared during the TIBERIANDAWN hygiene session.
+# See the approved reliability plan (session 019e7fd0-...) for full rationale and renormalization instructions.
+
+* text=auto
+
+# Windows-native launcher / project files (keep CRLF on Windows checkout for best compatibility)
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.sln text eol=crlf
+*.vcxproj* text eol=crlf
+*.user text eol=crlf
+
+# C/C++/assembly source - LF is preferred (modern MSVC tolerates it well; keeps WSL/git clean)
+*.cpp text eol=lf
+*.c text eol=lf
+*.h text eol=lf
+*.hpp text eol=lf
+*.inc text eol=lf
+*.asm text eol=lf
+*.py text eol=lf
+
+# PowerShell (Windows) vs shell scripts
+*.ps1 text eol=crlf
+*.sh text eol=lf
+
+# Documentation and configuration (LF is consistent and fine)
+*.md text eol=lf
+*.txt text eol=lf
+*.xml text eol=lf
+*.json text eol=lf
+*.ini text eol=lf
+
+# Binary / large asset files - never convert
+*.mix binary
+*.meg binary
+*.vqa binary
+*.aud binary
+*.shp binary
+*.tem binary
+*.des binary
+*.dll binary
+*.exe binary
+*.pdb binary
+*.lib binary
+*.obj binary
+*.exp binary
+
+# OS / editor junk
+Thumbs.db binary
+.DS_Store binary
+*.swp binary
+*.swo binary

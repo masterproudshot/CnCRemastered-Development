@@ -70,6 +70,7 @@ Every Aeloria mod folder must contain at minimum:
 
 - [ ] All code changes committed inside the submodule
 - [ ] Parent repo updated with new submodule pointer
+- [ ] Git working tree is clean (no uncommitted line-ending noise; `.gitattributes` present in root and submodule; `git status` shows only intentional changes)
 - [ ] `ccmod.json` is valid and present
 - [ ] `RedAlert.dll` copied to `Data/` folder
 - [ ] `GameConstants_Mod.xml` present (if zoom features are expected)
@@ -87,6 +88,7 @@ Every Aeloria mod folder must contain at minimum:
 - Forgetting to copy the built DLL into the mod folder.
 - Skipping the in-game smoke test.
 - Leaving `GameConstants_Mod.xml` or other data files out of the mod package.
+- Ignoring line-ending noise or dirty submodules (use `.gitattributes` + `git add --renormalize` to keep the tree clean across WSL + Windows).
 
 ---
 
