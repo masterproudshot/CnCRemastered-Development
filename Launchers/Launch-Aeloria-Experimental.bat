@@ -19,15 +19,18 @@ echo [Project Aeloria] Launching EXPERIMENTAL version...
 echo Mod: %MOD_NAME%
 echo.
 
-:: Warm Steam: start client once per day; relaunches use ClientG directly so Steam stays open after crash/exit.
+:: Warm Steam: if already running use ClientG; if not, start Steam then -applaunch (ClientG alone fails DRM).
+set USE_CLIENTG=1
 tasklist /FI "IMAGENAME eq steam.exe" 2>NUL | find /I "steam.exe" >NUL
 if errorlevel 1 (
-    echo Starting Steam warm client...
+    set USE_CLIENTG=0
+    echo Starting Steam client...
     start "" %STEAM_EXE% -silent
-    timeout /t 8 /nobreak >NUL
+    echo Waiting for Steam login/DRM init...
+    timeout /t 25 /nobreak >NUL
 )
 
-if exist %CLIENTG_EXE% (
+if "%USE_CLIENTG%"=="1" if exist %CLIENTG_EXE% (
     start "" %CLIENTG_EXE% REDALERT MOD=%MOD_NAME% MOD_DEBUG -FastLaunch
 ) else (
     start "" %STEAM_EXE% -applaunch %APP_ID% REDALERT MOD=%MOD_NAME% MOD_DEBUG -FastLaunch

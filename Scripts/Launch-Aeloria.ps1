@@ -442,41 +442,56 @@ function Test-SteamRunning {
     return $null -ne (Get-Process -Name "steam" -ErrorAction SilentlyContinue | Select-Object -First 1)
 }
 
-function Ensure-SteamRunning {
+function Ensure-SteamReady {
+    <#
+    Returns @{ Ready = $bool; PreExisting = $bool }
+    PreExisting=true  -> Steam was already running; direct ClientG.exe is safe (DRM authorized).
+    PreExisting=false -> We started Steam; must use -applaunch after init wait (ClientG alone fails DRM).
+    #>
     if (Test-SteamRunning) {
-        Write-Log "Steam already running (warm client - will stay open after game exit)." "INFO"
-        return $true
+        Write-Log "Steam already running before launcher (direct ClientG eligible)." "INFO"
+        return @{ Ready = $true; PreExisting = $true }
     }
 
-    Write-Log "Steam not running - starting warm client (not cold bootstrap -applaunch)..." "INFO"
+    Write-Log "Steam not running - starting full client with -silent..." "INFO"
     Start-Process -FilePath $SteamExe -ArgumentList "-silent"
 
-    $timeoutSec = 60
+    $timeoutSec = 90
     $elapsed = 0
     while ($elapsed -lt $timeoutSec) {
         if (Test-SteamRunning) {
-            Write-Log "Steam process detected after ${elapsed}s; waiting 5s for client init..." "INFO"
-            Start-Sleep -Seconds 5
-            return $true
+            Write-Log "Steam process detected after ${elapsed}s." "INFO"
+            break
         }
         Start-Sleep -Seconds 2
         $elapsed += 2
     }
 
-    Write-Log "Steam did not appear within ${timeoutSec}s - will fall back to cold -applaunch." "WARN"
-    return $false
+    if (-not (Test-SteamRunning)) {
+        Write-Log "Steam did not start within ${timeoutSec}s." "WARN"
+        return @{ Ready = $false; PreExisting = $false }
+    }
+
+    # ClientG.exe requires Steam login/DRM init; 5s was too short (Steam Required popup).
+    Write-Log "Waiting 25s for Steam login/DRM init before -applaunch..." "INFO"
+    Start-Sleep -Seconds 25
+    return @{ Ready = $true; PreExisting = $false }
 }
 
 function Start-CnCRemasteredGame {
     param([string]$LaunchArgs)
 
-    $steamWarm = Ensure-SteamRunning
+    $steam = Ensure-SteamReady
 
-    if ($steamWarm -and (Test-Path -LiteralPath $ClientGExe)) {
-        Write-Log "Launching ClientG.exe directly (Steam warm): $LaunchArgs" "INFO"
+    if ($steam.PreExisting -and $steam.Ready -and (Test-Path -LiteralPath $ClientGExe)) {
+        Write-Log "Launching ClientG.exe directly (Steam was already running): $LaunchArgs" "INFO"
         Start-Process -FilePath $ClientGExe -ArgumentList $LaunchArgs -WorkingDirectory $ClientGDir
+    } elseif ($steam.Ready) {
+        # Steam pre-started with -silent; -applaunch uses authorized path and keeps Steam open after exit.
+        Write-Log "Launching via Steam -applaunch (pre-started client; stays open after game exit): $LaunchArgs" "INFO"
+        Start-Process -FilePath $SteamExe -ArgumentList "-applaunch $AppId $LaunchArgs"
     } else {
-        Write-Log "Launching via Steam -applaunch (cold/bootstrap path): $LaunchArgs" "INFO"
+        Write-Log "Launching via cold Steam -applaunch fallback: $LaunchArgs" "WARN"
         Start-Process -FilePath $SteamExe -ArgumentList "-applaunch $AppId $LaunchArgs"
     }
 }

@@ -17,14 +17,17 @@ echo.
 echo Tip: You can now attach Visual Studio to ClientG.exe after launch.
 echo.
 
+set USE_CLIENTG=1
 tasklist /FI "IMAGENAME eq steam.exe" 2>NUL | find /I "steam.exe" >NUL
 if errorlevel 1 (
-    echo Starting Steam warm client...
+    set USE_CLIENTG=0
+    echo Starting Steam client...
     start "" %STEAM_EXE% -silent
-    timeout /t 8 /nobreak >NUL
+    echo Waiting for Steam login/DRM init...
+    timeout /t 25 /nobreak >NUL
 )
 
-if exist %CLIENTG_EXE% (
+if "%USE_CLIENTG%"=="1" if exist %CLIENTG_EXE% (
     start "" %CLIENTG_EXE% REDALERT MOD=%MOD_NAME% MOD_DEBUG NO_EVENT_HANDLER -FastLaunch
 ) else (
     start "" %STEAM_EXE% -applaunch %APP_ID% REDALERT MOD=%MOD_NAME% MOD_DEBUG NO_EVENT_HANDLER -FastLaunch
