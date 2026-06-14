@@ -179,8 +179,8 @@ function Invoke-AutoDeployDll {
         $deployed = Join-Path $script:SelectedProfile.DevPath "Data\RedAlert.dll"
         if (Test-Path $deployed) {
             $len = (Get-Item $deployed).Length
-            if ($len -lt 1270000 -or $len -gt 1280000) {
-                Write-Log "WARNING: Experimental deployed DLL size $len (expected ~1.277M). Possible profile pollution. Use explicit -Profile Experimental." "WARN"
+            if ($len -lt 1270000 -or $len -gt 1310000) {
+                Write-Log "WARNING: Experimental deployed DLL size $len (expected ~1.28-1.30M for infantry-scale builds). Possible profile pollution. Use explicit -Profile Experimental." "WARN"
             } else {
                 Write-Log "Experimental DLL size OK ($len bytes) post-deploy." "INFO"
             }
