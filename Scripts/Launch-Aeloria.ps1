@@ -128,10 +128,14 @@ function Get-MSBuildPath {
 function Invoke-AutoDeployDll {
     Write-Log "AutoDeployDll requested - looking for newest RedAlert.dll in build output..." "INFO"
 
-    # Hygiene: never auto-deploy Experimental bits into the pinned Stable profile (protects .bat daily driver contract).
-    if ($script:SelectedProfile.Name -eq "Aeloria-Stable") {
-        Write-Log "AutoDeploy SKIPPED for Stable profile (use explicit ps1 -P Stable -B -A -NC after editing; prevents Experimental pollution of pinned bits)." "WARN"
+    # Hygiene: only auto-deploy into Stable when the user explicitly built first (-B).
+    # Without -B, skip so a casual -A does not overwrite pinned Stable bits from stale output folders.
+    if ($script:SelectedProfile.Name -eq "Aeloria-Stable" -and -not $BuildFirst) {
+        Write-Log "AutoDeploy SKIPPED for Stable profile without -BuildFirst (use -P Stable -B -A -NC after editing source)." "WARN"
         return
+    }
+    if ($script:SelectedProfile.Name -eq "Aeloria-Stable" -and $BuildFirst) {
+        Write-Log "Stable profile + BuildFirst: auto-deploying freshly built DLL into Aeloria-Stable Development folder." "INFO"
     }
 
     if ($DebugMode) {
