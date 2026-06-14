@@ -117,6 +117,12 @@ function Get-MSBuildPath {
 function Invoke-AutoDeployDll {
     Write-Log "AutoDeployDll requested - looking for newest RedAlert.dll in build output..." "INFO"
 
+    # Hygiene: never auto-deploy Experimental bits into the pinned Stable profile (protects .bat daily driver contract).
+    if ($script:SelectedProfile.Name -eq "Aeloria-Stable") {
+        Write-Log "AutoDeploy SKIPPED for Stable profile (use explicit ps1 -P Stable -B -A -NC after editing; prevents Experimental pollution of pinned bits)." "WARN"
+        return
+    }
+
     if ($DebugMode) {
         Write-Log "  DebugMode active - will also search Debug build output folders (great when you build Debug config in VS)" "INFO"
     }
@@ -146,6 +152,20 @@ function Invoke-AutoDeployDll {
         }
     } else {
         Write-Log "No built RedAlert.dll found in expected output folders. Using whatever exists in Development profile." "WARN"
+    }
+
+    # Step 5 from approved plan: post-deploy size check for reproducibility (bugfixer 411/audit hygiene).
+    # Warn if Experimental profile got wrong size (e.g. pollution from other profile ~1.25M instead of ~1.27M).
+    if ($script:SelectedProfile.Name -eq "Aeloria-Experimental") {
+        $deployed = Join-Path $script:SelectedProfile.DevPath "Data\RedAlert.dll"
+        if (Test-Path $deployed) {
+            $len = (Get-Item $deployed).Length
+            if ($len -lt 1270000 -or $len -gt 1280000) {
+                Write-Log "WARNING: Experimental deployed DLL size $len (expected ~1.277M). Possible profile pollution. Use explicit -Profile Experimental." "WARN"
+            } else {
+                Write-Log "Experimental DLL size OK ($len bytes) post-deploy." "INFO"
+            }
+        }
     }
 }
 
@@ -472,7 +492,8 @@ try {
             $list += $k; $i++
         }
         $sel = Read-Host "`nSelect profile (1-$($list.Count))"
-        $Profile = if ($sel -match '^\d+$' -and [int]$sel -in 1..$list.Count) { $list[[int]$sel-1] } else { $list[0] }
+        # Prefer explicit or Stable/Experimental over "newest by mtime" to protect pinned Stable bits for .bat daily driver.
+        $Profile = if ($sel -match '^\d+$' -and [int]$sel -in 1..$list.Count) { $list[[int]$sel-1] } else { if ($recommended) { $recommended } else { "Stable" } }
     }
 
     if (-not $Profiles.ContainsKey($Profile)) {
@@ -482,6 +503,10 @@ try {
 
     $script:SelectedProfile = $Profiles[$Profile]
     Write-Log "Final selected profile: $($script:SelectedProfile.Name)" "INFO"
+    # Hygiene guard: if user asked for Stable but we ended up on Experimental (mtime or default bug), warn loudly.
+    if ($Profile -eq "Stable" -and $script:SelectedProfile.Name -ne "Aeloria-Stable") {
+        Write-Log "HYGIENE WARNING: Requested Stable but selected $($script:SelectedProfile.Name). Re-run with explicit -Profile Stable." "WARN"
+    }
 
     $script:NoCleanup = $NoCleanup
     if ($script:NoCleanup) {
