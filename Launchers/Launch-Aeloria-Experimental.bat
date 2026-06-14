@@ -9,10 +9,8 @@ set CLIENTG_EXE="C:\Program Files (x86)\Steam\steamapps\common\CnCRemastered\Cli
 set APP_ID=1213210
 set MOD_NAME=Aeloria-Experimental
 
-:: Enable rich Aeloria diagnostic logging (DIRECT_CLIENT_LIST_FLUSH, hasCreation inserts, cur/Total counts, clientListInserted, etc.)
-:: This makes pure .bat plays produce the same detailed Aeloria-Debug-*.log evidence as ps1 -D (for north star diagnosis).
-:: Matches the env set in ps1 when -DebugMode / -D.
-set AELORIA_ENABLE_VERBOSE_DRAW_LOGS=1
+:: Verbose draw logging (default OFF for play — late-game I/O is costly). Set to 1 for diagnosis (same as ps1 -D).
+set AELORIA_ENABLE_VERBOSE_DRAW_LOGS=0
 
 echo.
 echo [Project Aeloria] Launching EXPERIMENTAL version...
@@ -31,9 +29,9 @@ if errorlevel 1 (
 )
 
 if "%USE_CLIENTG%"=="1" if exist %CLIENTG_EXE% (
-    start "" %CLIENTG_EXE% REDALERT MOD=%MOD_NAME% MOD_DEBUG -FastLaunch
+    start "" %CLIENTG_EXE% REDALERT MOD=%MOD_NAME% -FastLaunch
 ) else (
-    start "" %STEAM_EXE% -applaunch %APP_ID% REDALERT MOD=%MOD_NAME% MOD_DEBUG -FastLaunch
+    start "" %STEAM_EXE% -applaunch %APP_ID% REDALERT MOD=%MOD_NAME% -FastLaunch
 )
 
 exit
