@@ -134,6 +134,10 @@ function Invoke-AutoDeployDll {
         Write-Log "AutoDeploy SKIPPED for Stable profile without -BuildFirst (use -P Stable -B -A -NC after editing source)." "WARN"
         return
     }
+    if ($script:SelectedProfile.Name -eq "Vanilla-Plus" -and -not $BuildFirst) {
+        Write-Log "AutoDeploy SKIPPED for Vanilla-Plus without -BuildFirst (prevents experimental DLL pollution)." "WARN"
+        return
+    }
     if ($script:SelectedProfile.Name -eq "Aeloria-Stable" -and $BuildFirst) {
         Write-Log "Stable profile + BuildFirst: auto-deploying freshly built DLL into Aeloria-Stable Development folder." "INFO"
     }
@@ -362,12 +366,17 @@ function Deploy-Profile($devPath, $livePath) {
     # Verification
     $destDll = Join-Path $livePath "Data\RedAlert.dll"
     if (Test-Path $destDll) {
-        Write-Log "Verification: Destination DLL exists ($((Get-Item $destDll).Length) bytes)" "INFO"
+        $destLen = (Get-Item $destDll).Length
+        Write-Log "Verification: Destination DLL exists ($destLen bytes)" "INFO"
+        if ($script:SelectedProfile.Name -eq "Aeloria-Stable" -and $destLen -ge 1270000) {
+            Write-Log "CRITICAL: Stable live DLL is $destLen bytes (experimental-sized). Wrong profile bits deployed!" "ERROR"
+        }
     } else {
         Write-Log "ERROR: Destination DLL missing after copy!" "ERROR"
         throw "Deployment verification failed"
     }
 
+    Write-Log "Deploy audit: DeployedProfile=$($script:SelectedProfile.Name) LiveDllBytes=$destLen" "INFO"
     Write-Log "=== DEPLOY PHASE COMPLETE ===" "INFO"
 }
 
