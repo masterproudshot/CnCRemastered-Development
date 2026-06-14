@@ -191,6 +191,8 @@ function Invoke-AutoDeployDll {
 # ====================== CONFIGURATION ======================
 $ProjectRoot = "C:\Users\jacks\Documents\CnCRemastered\Development"
 $SteamExe    = "C:\Program Files (x86)\Steam\steam.exe"
+$ClientGExe  = "C:\Program Files (x86)\Steam\steamapps\common\CnCRemastered\ClientG.exe"
+$ClientGDir  = "C:\Program Files (x86)\Steam\steamapps\common\CnCRemastered"
 $AppId       = "1213210"
 
 $LogDir      = Join-Path $ProjectRoot "Logs"
@@ -436,6 +438,49 @@ function Wait-ForVisibleGameWindow {
     return $false
 }
 
+function Test-SteamRunning {
+    return $null -ne (Get-Process -Name "steam" -ErrorAction SilentlyContinue | Select-Object -First 1)
+}
+
+function Ensure-SteamRunning {
+    if (Test-SteamRunning) {
+        Write-Log "Steam already running (warm client - will stay open after game exit)." "INFO"
+        return $true
+    }
+
+    Write-Log "Steam not running - starting warm client (not cold bootstrap -applaunch)..." "INFO"
+    Start-Process -FilePath $SteamExe -ArgumentList "-silent"
+
+    $timeoutSec = 60
+    $elapsed = 0
+    while ($elapsed -lt $timeoutSec) {
+        if (Test-SteamRunning) {
+            Write-Log "Steam process detected after ${elapsed}s; waiting 5s for client init..." "INFO"
+            Start-Sleep -Seconds 5
+            return $true
+        }
+        Start-Sleep -Seconds 2
+        $elapsed += 2
+    }
+
+    Write-Log "Steam did not appear within ${timeoutSec}s - will fall back to cold -applaunch." "WARN"
+    return $false
+}
+
+function Start-CnCRemasteredGame {
+    param([string]$LaunchArgs)
+
+    $steamWarm = Ensure-SteamRunning
+
+    if ($steamWarm -and (Test-Path -LiteralPath $ClientGExe)) {
+        Write-Log "Launching ClientG.exe directly (Steam warm): $LaunchArgs" "INFO"
+        Start-Process -FilePath $ClientGExe -ArgumentList $LaunchArgs -WorkingDirectory $ClientGDir
+    } else {
+        Write-Log "Launching via Steam -applaunch (cold/bootstrap path): $LaunchArgs" "INFO"
+        Start-Process -FilePath $SteamExe -ArgumentList "-applaunch $AppId $LaunchArgs"
+    }
+}
+
 function Wait-ForGameExit {
     Write-Log "=== MONITORING PHASE ===" "INFO"
 
@@ -549,6 +594,12 @@ try {
     # Debug mode decision + env var setup - do this *very early* (right after profile)
     # so that -AutoDeployDll, -BuildFirst, and every later step can react to it.
     # Note: We no longer prompt interactively. Pass -DebugMode (or -D) explicitly if desired.
+
+    # infantry-scale Phase 2: zero-map produced infantry (set AELORIA_ZERO_MAP_PRODUCED_INFANTRY=0 before launch to disable).
+    if (-not $env:AELORIA_ZERO_MAP_PRODUCED_INFANTRY) {
+        $env:AELORIA_ZERO_MAP_PRODUCED_INFANTRY = "1"
+    }
+    Write-Log "AELORIA_ZERO_MAP_PRODUCED_INFANTRY=$($env:AELORIA_ZERO_MAP_PRODUCED_INFANTRY) (infantry-scale Phase 2)" "INFO"
 
     if ($DebugMode) {
         $env:AELORIA_ENABLE_VERBOSE_DRAW_LOGS = "1"
@@ -668,8 +719,8 @@ try {
         Write-Log "Debug flags (MOD_DEBUG) added to launch arguments. (Verbose logging env var was already set for the whole session above.)" "INFO"
     }
 
-    Write-Log "Launching via Steam with arguments: $launchArgs" "INFO"
-    Start-Process -FilePath $SteamExe -ArgumentList "-applaunch $AppId $launchArgs"
+    Write-Log "Launch arguments: $launchArgs" "INFO"
+    Start-CnCRemasteredGame -LaunchArgs $launchArgs
 
     # Monitor
     Set-Variable -Name CurrentState -Scope Script -Value ([LauncherState]::Monitoring)
