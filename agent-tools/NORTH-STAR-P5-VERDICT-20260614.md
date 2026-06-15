@@ -53,22 +53,28 @@
 | no_abrupt_tail | clean tail | **PASS** |
 | no_crash_zip | clean exit | **PASS** |
 
-### P4 — 5 min without `-D` — **PASS** (2026-06-15)
+### P4 — 5 min without `-D` — **FAIL** (2026-06-15)
 
-**Launcher:** `Logs/Launch-Aeloria_20260615_002310_716.log` (~390s visible runtime, no `-D`)
+**Launcher:** `Logs/Launch-Aeloria_20260615_002310_716.log` (~390s then silent process exit)  
+**Crash log:** `Logs/Aeloria-Debug_20260615_003041_d83dc39b-efcd-P4-CRASH.log` (session `d83dc39b-efcd`)
+
+User reports **hard crash** (instant game close). Launcher saw process exit only — no crash zip (silent AV pattern).
 
 | Gate | Threshold | Status |
 |------|-----------|--------|
-| max_frame | ≥ 7500 | **PASS** (~6.5 min wall clock; no debug log in non-`-D` mode) |
-| no_crash_zip | clean exit | **PASS** |
+| max_frame | ≥ 7500 | frame **8866** reached before crash |
+| no_crash_zip | clean exit | **N/A** — silent AV, no zip |
+| user_exit | menu quit | **FAIL** — hard crash per user |
+
+**Crash tail (frame 8849–8866):** mass `INFANTRY_DESTROYED` (warhead_death=2, likely nuke) → burst of `TRACKING_CLEARED` on dead infantry pool slots (`had_hotlist=1`) → log stops mid-cleanup.
 
 ---
 
 ## P5 UX Verdict
 
-**Status: YES** — user reported ~15 min debug soak "great"; P4 daily-driver run clean ~6.5 min.
+**Status: PARTIAL** — P1/P3 debug soak (~15 min) felt great; P4 daily-driver **crashed ~6.5 min**.
 
-**North star achieved** for this ladder run (5z stack @ `915e34d`).
+**North star: NOT achieved** until P4 passes.
 
 ---
 
