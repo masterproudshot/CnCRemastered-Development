@@ -562,12 +562,8 @@ function Wait-ForGameExit {
 
 # ====================== MAIN EXECUTION ======================
 
-# Generate short ID early for debug sessions (used for log naming and correlation)
-if ($DebugMode) {
-    $script:DebugShortId = New-ShortLogId
-} else {
-    $script:DebugShortId = $null
-}
+# Session short ID for log naming/correlation (P4 critical logs land in USERPROFILE even without -D).
+$script:DebugShortId = New-ShortLogId
 
 Initialize-Logging
 Set-Variable -Name CurrentState -Scope Script -Value ([LauncherState]::Initializing)
@@ -626,11 +622,11 @@ try {
     }
     Write-Log "AELORIA_ZERO_MAP_PRODUCED_INFANTRY=$($env:AELORIA_ZERO_MAP_PRODUCED_INFANTRY) (infantry-scale Phase 2)" "INFO"
 
+    if ($script:DebugShortId) {
+        $env:AELORIA_LOG_SESSION_ID = $script:DebugShortId
+    }
     if ($DebugMode) {
         $env:AELORIA_ENABLE_VERBOSE_DRAW_LOGS = "1"
-        if ($script:DebugShortId) {
-            $env:AELORIA_LOG_SESSION_ID = $script:DebugShortId
-        }
         Write-Log "DebugMode is active for this session: AELORIA_ENABLE_VERBOSE_DRAW_LOGS=1 (verbose draw logs will be enabled in the DLL)" "INFO"
     } else {
         # Explicitly set to "0" so child processes (Steam + game) definitely see verbose logging as OFF.
@@ -781,9 +777,9 @@ try {
         Write-Log "Latest crash report available at: $($script:LatestCrashReport)" "WARN"
     }
 
-    # In debug mode, always attempt to collect the Aeloria debug log (even on clean exits)
-    # so we don't lose diagnostic data on "clean" process exits that are actually stability-related.
-    if ($script:DebugShortId) {
+    # Always collect USERPROFILE Aeloria debug log when a skirmish ran (critical breadcrumbs
+    # are logged even without -D). Full verbose draw requires -D.
+    if ($script:DebugShortId -and $script:GameWindowWasVisible) {
         $aeloriaLogPatterns = @(
             "$env:USERPROFILE\Aeloria-Debug-*.log",
             "C:\Users\jacks\Aeloria-Debug-*.log",
@@ -832,13 +828,14 @@ try {
                 Write-Host "### END AELORIA DEBUG LOG TAIL ###" -ForegroundColor Yellow
             }
 
-            # Phase P0: auto-analyze soak gates when debug log was collected.
+            # Phase P0/P4: auto-analyze soak gates when debug log was collected.
             $analyzeScript = Join-Path $PSScriptRoot "Analyze-AeloriaSoak.ps1"
             if (Test-Path -LiteralPath $analyzeScript) {
                 try {
+                    $soakProfile = if ($script:IsDebugMode) { 'P1' } else { 'P4' }
                     Write-Host ""
-                    Write-Host ">>> AELORIA SOAK AUTO-ANALYSIS (P1 gates):" -ForegroundColor Cyan
-                    & $analyzeScript -DebugLog $destPath -Profile P1 -LauncherLog $script:LogFile
+                    Write-Host ">>> AELORIA SOAK AUTO-ANALYSIS ($soakProfile gates):" -ForegroundColor Cyan
+                    & $analyzeScript -DebugLog $destPath -Profile $soakProfile -LauncherLog $script:LogFile
                 } catch {
                     Write-Log "WARN: Analyze-AeloriaSoak.ps1 failed: $_" "WARN"
                 }
