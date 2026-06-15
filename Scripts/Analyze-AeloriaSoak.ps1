@@ -45,10 +45,10 @@ if (-not (Test-Path -LiteralPath $DebugLog)) {
 $content = Get-Content -LiteralPath $DebugLog -ErrorAction Stop
 $lineCount = $content.Count
 
-# Max logic frame
+# Max logic frame (exclude last_bulk_frame= false positive)
 $maxFrame = 0
 foreach ($line in $content) {
-    if ($line -match 'frame=(\d+)') {
+    if ($line -match '(?<![a-z_])frame=(\d+)') {
         $f = [int]$Matches[1]
         if ($f -gt $maxFrame) { $maxFrame = $f }
     }
@@ -71,7 +71,8 @@ $bulkStomp = @($content | Where-Object { $_ -match 'BULK_SLOT_STOMP_GUARD' })
 $producedBulkDefer = @($content | Where-Object { $_ -match 'PRODUCED_UNIT_BULK_DEFER' })
 $producedFirstDrawVirtual = @($content | Where-Object { $_ -match 'PRODUCED_UNIT_FIRST_DRAW.*window=VIRTUAL' })
 $producedFirstDrawMain = @($content | Where-Object { $_ -match 'PRODUCED_UNIT_FIRST_DRAW.*window=MAIN' })
-$wfBuilt = @($content | Where-Object { $_ -match 'STRUCT_WEAP|WEAP|war.?factory|WARFACTORY' -or $_ -match 'type_enum=21\b' })
+# STRUCT_WEAP enum value is 2 (not 21 — that is STRUCT_BARRACKS)
+$wfBuilt = @($content | Where-Object { $_ -match 'BUILDING_GRAND_OPENING_COMPLETE.*type_enum=2\b' -or $_ -match 'CONSTRUCTION_COMPLETE.*type_enum=2\b' })
 
 # Abrupt tail: log ends mid-burst without a recent graceful marker
 $tailLines = if ($lineCount -ge 20) { $content[-20..-1] } else { $content }
