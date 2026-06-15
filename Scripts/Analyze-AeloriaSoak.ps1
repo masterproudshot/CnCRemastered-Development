@@ -84,6 +84,11 @@ foreach ($marker in @('FINAL STATE', 'CNC_Shutdown', 'GAME_OVER', 'PLAYER_EXIT')
 if ($maxFrame -ge 1000 -and $tailLines -match 'frame=') {
     $abruptTail = $false
 }
+# Post-nuke / mass-death cleanup burst without shutdown marker is a hard crash (P4 d83dc39b).
+$trackingClearedTail = @($tailLines | Where-Object { $_ -match 'TRACKING_CLEARED' })
+if ($trackingClearedTail.Count -ge 3) {
+    $abruptTail = $true
+}
 
 $crashZip = $null
 if ($LauncherLog -and (Test-Path -LiteralPath $LauncherLog)) {
@@ -115,6 +120,7 @@ switch ($Profile) {
     }
     'P4' {
         $gates['max_frame_ge_7500'] = ($maxFrame -ge 7500)
+        $gates['no_abrupt_tail'] = (-not $abruptTail)
         $gates['no_crash_zip'] = (-not $crashZip)
         $gates['log_exists'] = $true
     }
