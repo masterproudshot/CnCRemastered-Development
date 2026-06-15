@@ -33,6 +33,13 @@ Always do `Scripts\Launch-Aeloria.ps1 -Profile Stable -BuildFirst -AutoDeployDll
 Then double-click the .bat. The ps1 pins the correct DLL + XMLs into the live Aeloria-Stable folder.
 Re-run the ps1 (with explicit -P) any time you edit source. ps1 now has stronger profile guards + post-deploy size/GameConstants checks + logging to catch mis-selection.
 
+**North-star soak validation (2026-06-14, Phase 5s-5w):**
+- Dev soak: `Scripts\Launch-Aeloria.ps1 -Profile Experimental -BuildFirst -AutoDeployDll -NoCleanup -DebugMode`
+- In-game: 4p Aeloria skirmish → ref+silo → war factory → queue 3 light tanks → harvesters → play 5+ min.
+- On exit, ps1 auto-runs `Scripts\Analyze-AeloriaSoak.ps1` (P1 gates: max frame >= 7500, no abrupt tail, tank unlimbo if WF built).
+- Daily-driver check: same soak without `-DebugMode` after Experimental P1 passes.
+- Expected live DLL size after 5s-5w build: ~1.32 MB (check ps1 post-deploy line).
+
 Customizing:
 If your Steam is installed in a different location, edit the STEAM_EXE line in the .bat file.
 

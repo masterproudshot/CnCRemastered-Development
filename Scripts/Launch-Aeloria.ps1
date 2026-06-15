@@ -831,6 +831,18 @@ try {
                 }
                 Write-Host "### END AELORIA DEBUG LOG TAIL ###" -ForegroundColor Yellow
             }
+
+            # Phase P0: auto-analyze soak gates when debug log was collected.
+            $analyzeScript = Join-Path $PSScriptRoot "Analyze-AeloriaSoak.ps1"
+            if (Test-Path -LiteralPath $analyzeScript) {
+                try {
+                    Write-Host ""
+                    Write-Host ">>> AELORIA SOAK AUTO-ANALYSIS (P1 gates):" -ForegroundColor Cyan
+                    & $analyzeScript -DebugLog $destPath -Profile P1 -LauncherLog $script:LogFile
+                } catch {
+                    Write-Log "WARN: Analyze-AeloriaSoak.ps1 failed: $_" "WARN"
+                }
+            }
         } else {
             if ($script:GameWindowWasVisible) {
                 Write-Log "WARN: Debug session ended without Aeloria debug log - DLL may not have loaded, or skirmish was not started." "WARN"
