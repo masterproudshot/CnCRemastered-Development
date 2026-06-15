@@ -510,6 +510,7 @@ function Wait-ForGameExit {
 
     # First, wait until we actually see a game window
     $windowVisible = Wait-ForVisibleGameWindow
+    $script:GameWindowWasVisible = [bool]$windowVisible
 
     if (-not $windowVisible) {
         Write-Log "No game window ever appeared. Assuming launch failure." "WARN"
@@ -831,7 +832,18 @@ try {
                 Write-Host "### END AELORIA DEBUG LOG TAIL ###" -ForegroundColor Yellow
             }
         } else {
-            Write-Log "No recent Aeloria debug log found to collect." "DEBUG"
+            if ($script:GameWindowWasVisible) {
+                Write-Log "WARN: Debug session ended without Aeloria debug log — DLL may not have loaded, or skirmish was not started." "WARN"
+                Write-Host "WARN: No Aeloria debug log collected (game window was visible). Start a skirmish for full diagnostics." -ForegroundColor Yellow
+                $rawProbe = Get-ChildItem -Path "$env:USERPROFILE\Aeloria-Debug-*.log" -ErrorAction SilentlyContinue |
+                            Sort-Object LastWriteTime -Descending | Select-Object -First 3
+                if ($rawProbe) {
+                    Write-Log "Recent raw USERPROFILE Aeloria-Debug logs (for diagnosis):" "WARN"
+                    $rawProbe | ForEach-Object { Write-Log "  $($_.FullName) mtime=$($_.LastWriteTime)" "WARN" }
+                }
+            } else {
+                Write-Log "No recent Aeloria debug log found to collect." "DEBUG"
+            }
         }
     }
 
