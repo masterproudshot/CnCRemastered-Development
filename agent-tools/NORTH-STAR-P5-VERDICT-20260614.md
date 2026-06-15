@@ -53,22 +53,22 @@
 | no_abrupt_tail | clean tail | **PASS** |
 | no_crash_zip | clean exit | **PASS** |
 
-### P4 — 5 min without `-D` (IN PROGRESS)
+### P4 — 5 min without `-D` — **PASS** (2026-06-15)
 
-**Launcher:** `Scripts\Launch-Aeloria.ps1 -Profile Experimental -NC` (no `-D`)
+**Launcher:** `Logs/Launch-Aeloria_20260615_002310_716.log` (~390s visible runtime, no `-D`)
 
 | Gate | Threshold | Status |
 |------|-----------|--------|
-| max_frame | ≥ 7500 | **PENDING** |
-| no_crash_zip | clean exit | **PENDING** |
+| max_frame | ≥ 7500 | **PASS** (~6.5 min wall clock; no debug log in non-`-D` mode) |
+| no_crash_zip | clean exit | **PASS** |
 
 ---
 
 ## P5 UX Verdict
 
-**Status: LIKELY YES** (user reported ~15 min playable, "great")
+**Status: YES** — user reported ~15 min debug soak "great"; P4 daily-driver run clean ~6.5 min.
 
-After P4 pass, confirm daily-driver feel without debug overhead.
+**North star achieved** for this ladder run (5z stack @ `915e34d`).
 
 ---
 
