@@ -520,44 +520,11 @@ function Wait-ForGameExit {
     Write-Log "Game window is visible. Now monitoring for clean exit..." "INFO"
 
     $processes = @("ClientG", "InstanceServerG")
-    $timeoutSeconds = 900   # 15 minutes max play session
+    $timeoutSeconds = 3600   # agent soak ceiling (P3/P4); process exit ends wait early
 
-    # In debug mode we want *immediate* detection the moment you close the game.
-    # No polling delays, no minimum runtime guard. The launcher should react instantly.
-    if ($script:IsDebugMode) {
-        Write-Log "Debug mode: using immediate process exit detection (no delays)." "INFO"
-
-        # Wait-Process blocks until the named processes are gone.
-        # This gives near-instant reaction when you exit the game.
-        Wait-Process -Name $processes -ErrorAction SilentlyContinue -Timeout $timeoutSeconds
-
-        Write-Log "Game processes have exited (detected immediately)." "INFO"
-        return
-    }
-
-    # === Normal (non-debug) path ===
-    $checkInterval = 3
-    $elapsed = 0
-
-    while ($elapsed -lt $timeoutSeconds) {
-        $running = Get-Process -Name $processes -ErrorAction SilentlyContinue
-
-        if (-not $running) {
-            # The game processes are gone. Exit the monitoring immediately.
-            # No "too early" waiting or artificial delays when you intentionally close the game.
-            Write-Log "Game processes have exited (detected immediately)." "INFO"
-            return
-        }
-
-        Start-Sleep -Seconds $checkInterval
-        $elapsed += $checkInterval
-
-        if ($elapsed % 30 -eq 0) {
-            Write-Log "Game still running... ($elapsed seconds visible runtime)" "DEBUG"
-        }
-    }
-
-    Write-Log "Timeout reached while game was still running." "WARN"
+    Write-Log "Monitoring via Wait-Process (timeout ${timeoutSeconds}s)." "INFO"
+    Wait-Process -Name $processes -ErrorAction SilentlyContinue -Timeout $timeoutSeconds
+    Write-Log "Game processes have exited (or soak timeout reached)." "INFO"
 }
 
 # ====================== MAIN EXECUTION ======================
@@ -731,10 +698,12 @@ try {
     # Launch
     Set-Variable -Name CurrentState -Scope Script -Value ([LauncherState]::Launching)
 
-    $launchArgs = "REDALERT MOD=$($script:SelectedProfile.Name) -FastLaunch"
+    $launchArgs = "REDALERT MOD=$($script:SelectedProfile.Name) -FastLaunch NO_EVENT_HANDLER"
     if ($DebugMode) {
-        $launchArgs += " MOD_DEBUG NO_EVENT_HANDLER"
+        $launchArgs += " MOD_DEBUG"
         Write-Log "Debug flags (MOD_DEBUG) added to launch arguments. (Verbose logging env var was already set for the whole session above.)" "INFO"
+    } else {
+        Write-Log "P4 perf: NO_EVENT_HANDLER always on (debug -D adds MOD_DEBUG only)." "INFO"
     }
 
     Write-Log "Launch arguments: $launchArgs" "INFO"
@@ -804,13 +773,30 @@ try {
         if ($foundLog) {
             $newName = "Aeloria-Debug_$(Get-Date -Format 'yyyyMMdd_HHmmss')_$($script:DebugShortId).log"
             $destPath = Join-Path $LogDir $newName
-            try {
-                Move-Item -Path $foundLog.FullName -Destination $destPath -Force -ErrorAction Stop
+            $collected = $false
+            foreach ($attempt in 1..5) {
+                try {
+                    Move-Item -Path $foundLog.FullName -Destination $destPath -Force -ErrorAction Stop
+                    $collected = $true
+                    break
+                } catch {
+                    if ($attempt -lt 5) {
+                        Start-Sleep -Seconds 2
+                        continue
+                    }
+                    try {
+                        Copy-Item -Path $foundLog.FullName -Destination $destPath -Force -ErrorAction Stop
+                        $collected = $true
+                        Write-Log "Collected Aeloria debug log via copy (move failed: locked file)." "WARN"
+                    } catch {
+                        Write-Log "WARNING: Failed to collect Aeloria debug log from $($foundLog.FullName): $_" "WARN"
+                    }
+                }
+            }
+            if ($collected) {
                 $script:CollectedAeloriaDebugLog = $destPath
                 Write-Log "Collected Aeloria debug log -> $destPath" "INFO"
                 Write-Host "Aeloria Debug Log: $destPath" -ForegroundColor Cyan
-            } catch {
-                Write-Log "WARNING: Failed to collect Aeloria debug log from $($foundLog.FullName)" "WARN"
             }
 
             # Always try to show a tail of the debug log on the console (on its own clear lines)
