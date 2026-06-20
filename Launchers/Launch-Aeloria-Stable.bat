@@ -1,20 +1,19 @@
 @echo off
 :: ============================================================
-:: Project Aeloria - Stable Launcher (Improved)
+:: Project Aeloria - Stable Launcher (P4 daily driver)
 :: ============================================================
+:: Routes through Launch-Aeloria.ps1 so crashes collect Aeloria debug logs
+:: and auto-analyze P4 gates. P4 = -NC only (no -D verbose draw spam).
 
-set STEAM_EXE="C:\Program Files (x86)\Steam\steam.exe"
-set APP_ID=1213210
-set MOD_NAME=Aeloria-Stable
-
-:: Normal play: verbose draw logging OFF for speed. Use Scripts\Launch-Aeloria.ps1 -Profile Stable -D for diagnosis.
-set AELORIA_ENABLE_VERBOSE_DRAW_LOGS=0
+setlocal
+set "PS1=%~dp0..\Scripts\Launch-Aeloria.ps1"
 
 echo.
-echo [Project Aeloria] Launching STABLE version...
-echo Mod: %MOD_NAME%
+echo [Project Aeloria] Launching STABLE via PowerShell launcher...
+echo Profile: Stable  Mode: P4 (-NC, no -D)
 echo.
 
-start "" %STEAM_EXE% -applaunch %APP_ID% REDALERT MOD=%MOD_NAME% -FastLaunch
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%PS1%" -Profile Stable -NC
+set "EXITCODE=%ERRORLEVEL%"
 
-exit
+endlocal & exit /b %EXITCODE%

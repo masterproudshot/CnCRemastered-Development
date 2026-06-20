@@ -1,9 +1,9 @@
 {
   "name": "Aeloria-Stable",
-  "description": "Project Aeloria - Stable Quality of Life improvements for Red Alert Remastered. Smart harvesters, rally points, better pathfinding, and modern conveniences while staying faithful to classic gameplay.",
+  "description": "Project Aeloria - Stable daily driver. Infantry-scale 4p skirmish, smart harvesters, rally points, P4-tuned performance (5z stack). Promoted from Experimental after dual P4 PASS soaks.",
   "author": "Jackson",
   "load_order": 20,
-  "version_low": 1,
+  "version_low": 2,
   "version_high": 0,
   "game_type": "RA"
 }
