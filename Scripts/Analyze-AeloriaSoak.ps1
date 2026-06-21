@@ -68,14 +68,43 @@ foreach ($line in $harvesterRelocate) {
 }
 
 $bulkStomp = @($content | Where-Object { $_ -match 'BULK_SLOT_STOMP_GUARD' })
+# Bulk idx must stay dense within each export burst: max(insert idx) must be < finalCount (5z-n2b).
+$bulkIdxGap = $false
+$pendingBulkMaxIdx = -1
+foreach ($line in $content) {
+    if ($line -match 'GET_LAYER_BULK_HASCREATION_INSERT.*idx=(\d+)') {
+        $idx = [int]$Matches[1]
+        if ($idx -gt $pendingBulkMaxIdx) { $pendingBulkMaxIdx = $idx }
+    }
+    if ($line -match 'FIRST_EXPORT_WITH_GRADUATED_UNITS.*finalCount=(\d+)') {
+        $finalCount = [int]$Matches[1]
+        if ($pendingBulkMaxIdx -ge 0 -and $pendingBulkMaxIdx -ge $finalCount) { $bulkIdxGap = $true }
+        $pendingBulkMaxIdx = -1
+    }
+}
 $producedBulkDefer = @($content | Where-Object { $_ -match 'PRODUCED_UNIT_BULK_DEFER' })
 $producedFirstDrawVirtual = @($content | Where-Object { $_ -match 'PRODUCED_UNIT_FIRST_DRAW.*window=VIRTUAL' })
 $producedFirstDrawMain = @($content | Where-Object { $_ -match 'PRODUCED_UNIT_FIRST_DRAW.*window=MAIN' })
+# 5z-n5: per-export FOOT_LAYER_SUSTAIN spam after war-factory harvester window indicates sustain gap.
+$footSustainSpam = $false
+$consecutiveFootSustain = 0
+foreach ($line in $content) {
+    if ($line -notmatch 'frame=(\d+)') { continue }
+    $frame = [int]$Matches[1]
+    if ($frame -le 4546) { $consecutiveFootSustain = 0; continue }
+    if ($line -match 'FOOT_LAYER_SUSTAIN') {
+        $consecutiveFootSustain++
+        if ($consecutiveFootSustain -gt 30) { $footSustainSpam = $true; break }
+    } else {
+        $consecutiveFootSustain = 0
+    }
+}
 # STRUCT_WEAP enum value is 2 (not 21 — that is STRUCT_BARRACKS)
 $wfBuilt = @($content | Where-Object { $_ -match 'BUILDING_GRAND_OPENING_COMPLETE.*type_enum=2\b' -or $_ -match 'CONSTRUCTION_COMPLETE.*type_enum=2\b' })
 
 # Abrupt tail: log ends mid-burst without a recent graceful marker
 $tailLines = if ($lineCount -ge 20) { $content[-20..-1] } else { $content }
+$tailLast5 = if ($lineCount -ge 5) { $content[-5..-1] } else { $content }
 $abruptTail = $true
 foreach ($marker in @('FINAL STATE', 'CNC_Shutdown', 'GAME_OVER', 'PLAYER_EXIT')) {
     if ($content -match [regex]::Escape($marker)) { $abruptTail = $false; break }
@@ -84,10 +113,51 @@ foreach ($marker in @('FINAL STATE', 'CNC_Shutdown', 'GAME_OVER', 'PLAYER_EXIT')
 if ($maxFrame -ge 1000 -and $tailLines -match 'frame=') {
     $abruptTail = $false
 }
+# Known crash signatures: harvester first draw or safe-shape emit without shutdown (5z-n).
+$crashTailMarkers = @($tailLast5 | Where-Object {
+    $_ -match 'HARVESTER_FIRST_DRAW' -or $_ -match 'SAFE_SHAPE_EMIT'
+})
+if ($crashTailMarkers.Count -gt 0) {
+    $abruptTail = $true
+}
 # Post-nuke / mass-death cleanup burst without shutdown marker is a hard crash (P4 d83dc39b).
 $trackingClearedTail = @($tailLines | Where-Object { $_ -match 'TRACKING_CLEARED' })
 if ($trackingClearedTail.Count -ge 3) {
     $abruptTail = $true
+}
+
+# Windows Application Error AV in REDALERT.DLL during session (crash zip often missing).
+$windowsAv = $null
+$sessionStart = $null
+if ($LauncherLog -and (Test-Path -LiteralPath $LauncherLog)) {
+    $startMatch = Select-String -Path $LauncherLog -Pattern 'Launcher Started' -SimpleMatch -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($startMatch -and $startMatch.Line -match '\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})') {
+        $sessionStart = [datetime]::ParseExact($Matches[1], 'yyyy-MM-dd HH:mm:ss', $null)
+    }
+}
+if (-not $sessionStart -and $content.Count -gt 0 -and $content[0] -match 'started (\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})') {
+    $sessionStart = [datetime]::ParseExact($Matches[1], 'yyyy-MM-dd HH:mm:ss', $null)
+}
+try {
+    $avEvents = Get-WinEvent -FilterHashtable @{
+        LogName = 'Application'
+        ProviderName = 'Application Error'
+        Level = 2
+    } -MaxEvents 30 -ErrorAction SilentlyContinue
+    foreach ($ev in $avEvents) {
+        if ($sessionStart -and $ev.TimeCreated -lt $sessionStart) { continue }
+        $msg = $ev.Message
+        if ($msg -match 'InstanceServerG\.exe' -and $msg -match '0xc0000005|0xc000001d|0xc0000096') {
+            $modName = if ($msg -match 'Faulting module name:\s*(\S+)') { $Matches[1] } else { 'unknown' }
+            if ($modName -notmatch '^(REDALERT\.DLL|VCRUNTIME140\.dll|MSVCP140\.dll|ucrtbase\.dll)$') { continue }
+            $offset = if ($msg -match 'Fault offset:\s*(0x[0-9a-fA-F]+)') { $Matches[1] } else { 'unknown' }
+            $modPath = if ($msg -match 'Faulting module path:\s*(.+)') { $Matches[1].Trim() } else { '' }
+            $windowsAv = "AV $offset @ $modName @ $modPath @ $($ev.TimeCreated.ToString('yyyy-MM-dd HH:mm:ss'))"
+            break
+        }
+    }
+} catch {
+    # Get-WinEvent unavailable — skip gate
 }
 
 $crashZip = $null
@@ -104,6 +174,8 @@ switch ($Profile) {
         $gates['max_frame_ge_7500'] = ($maxFrame -ge 7500)
         $gates['no_abrupt_tail'] = (-not $abruptTail)
         $gates['no_crash_zip'] = (-not $crashZip)
+        $gates['no_windows_av'] = (-not $windowsAv)
+        $gates['no_bulk_idx_gap'] = (-not $bulkIdxGap)
         if ($anyProducedUnlimbo.Count -gt 0 -or $wfBuilt.Count -gt 0) {
             $gates['tank_unlimbo_if_produced'] = ($tankUnlimbos.Count -ge 1)
         } else {
@@ -115,6 +187,7 @@ switch ($Profile) {
         $gates['max_frame_ge_27000'] = ($maxFrame -ge 27000)
         $gates['no_abrupt_tail'] = (-not $abruptTail)
         $gates['no_crash_zip'] = (-not $crashZip)
+        $gates['no_windows_av'] = (-not $windowsAv)
         $gates['tank_unlimbos_ge_2'] = ($tankUnlimbos.Count -ge 2)
         $gates['harvester_relocate_plus_100'] = ($lastHarvesterRelocateFrame -eq 0 -or ($maxFrame -ge $lastHarvesterRelocateFrame + 100))
     }
@@ -122,6 +195,9 @@ switch ($Profile) {
         $gates['max_frame_ge_7500'] = ($maxFrame -ge 7500)
         $gates['no_abrupt_tail'] = (-not $abruptTail)
         $gates['no_crash_zip'] = (-not $crashZip)
+        $gates['no_windows_av'] = (-not $windowsAv)
+        $gates['no_bulk_idx_gap'] = (-not $bulkIdxGap)
+        $gates['no_foot_sustain_spam'] = (-not $footSustainSpam)
         $gates['log_exists'] = $true
     }
 }
@@ -133,9 +209,10 @@ Write-Host "=== AELORIA SOAK ANALYSIS ($Profile) ===" -ForegroundColor Cyan
 Write-Host "Log: $DebugLog"
 Write-Host "Lines: $lineCount | MaxFrame: $maxFrame"
 Write-Host "Tank unlimbos: $($tankUnlimbos.Count) | Jeep: $($jeepUnlimbos.Count) | Any produced: $($anyProducedUnlimbo.Count)"
-Write-Host "Harvester relocate last frame: $lastHarvesterRelocateFrame | Bulk stomp: $($bulkStomp.Count)"
+Write-Host "Harvester relocate last frame: $lastHarvesterRelocateFrame | Bulk stomp: $($bulkStomp.Count) | Bulk idx gap: $bulkIdxGap | Foot sustain spam: $footSustainSpam"
 Write-Host "Produced first draw VIRTUAL/MAIN: $($producedFirstDrawVirtual.Count)/$($producedFirstDrawMain.Count)"
 if ($crashZip) { Write-Host "Crash zip: $crashZip" -ForegroundColor Yellow }
+if ($windowsAv) { Write-Host "Windows AV: $windowsAv" -ForegroundColor Yellow }
 
 foreach ($kv in $gates.GetEnumerator()) {
     $color = if ($kv.Value) { 'Green' } else { 'Red' }

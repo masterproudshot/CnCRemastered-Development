@@ -484,9 +484,19 @@ function Ensure-SteamReady {
     return @{ Ready = $true; PreExisting = $false }
 }
 
+function Stop-StaleCnCProcesses {
+    $names = @('ClientG', 'InstanceServerG')
+    $found = Get-Process -Name $names -ErrorAction SilentlyContinue
+    if (-not $found) { return }
+    Write-Log "Stopping stale CnC processes before launch: $($found.Name -join ', ')" "WARN"
+    $found | Stop-Process -Force -ErrorAction SilentlyContinue
+    Start-Sleep -Seconds 3
+}
+
 function Start-CnCRemasteredGame {
     param([string]$LaunchArgs)
 
+    Stop-StaleCnCProcesses
     $steam = Ensure-SteamReady
 
     # Always -applaunch from the ps1 dev launcher. Direct ClientG.exe can fail DRM even when
@@ -494,6 +504,8 @@ function Start-CnCRemasteredGame {
     # keeps the full client open after game exit; relaunches skip the 25s init wait when PreExisting.
     if ($steam.Ready) {
         if ($steam.PreExisting) {
+            Write-Log "Steam already running; brief settle wait after stale-process cleanup..." "INFO"
+            Start-Sleep -Seconds 5
             Write-Log "Launching via Steam -applaunch (Steam already running; fast relaunch path): $LaunchArgs" "INFO"
         } else {
             Write-Log "Launching via Steam -applaunch (after pre-started client + DRM init wait): $LaunchArgs" "INFO"

@@ -1,0 +1,74 @@
+﻿# Full RA Roster - Crash Coverage Matrix
+
+Generated: 2026-06-20 17:07 by `Scripts/Audit-AeloriaCoverage.ps1`
+Source: `C:\Users\jacks\Documents\CnCRemastered\Development\worktrees\bon-5k-5\REDALERT`
+
+## Summary
+
+| Metric | Value |
+|--------|-------|
+| Base RA roster entries | 149 |
+| Layer 3 (CC_Draw_Shape intercept) | YES |
+| Layer 1 producedVessel tracking | YES |
+| DLL VESSEL safe-type fallback | YES |
+
+## Three-Layer Defense Model
+
+| Layer | Scope | Status |
+|-------|-------|--------|
+| L1 Unlimbo tracking | TECHNO.CPP creation frame + stability flags | ACTIVE |
+| L2 Per-class Draw_It | UNIT/AIRCRAFT/VESSEL/INFANTRY/BUILDING | see table below |
+| L3 CC_Draw_Shape | CONQUER.CPP universal intercept | ACTIVE |
+
+> Layer 3 does **not** catch all pre-blitter paths inside Draw_It. Per-class L2 guards are mandatory for produced pool-reuse technos.
+
+## Per-Class Coverage (Layer 2)
+
+| Class | Draw guard | Class-> count | Safe_Type count | DLL_Intercept | Eternal-safe ref | Verdict |
+|-------|------------|---------------|-----------------|---------------|------------------|---------|
+| INFANTRY | Draw_It | 103 | 6 | 6 | 0 | **PARTIAL** |
+| UNIT | Draw_It | 97 | 11 | 4 | 1 | **FULL** |
+| VESSEL | Draw_It | 68 | 1 | 3 | 1 | **FULL** |
+| AIRCRAFT | Draw_It | 107 | 2 | 3 | 1 | **FULL** |
+| BUILDING | Draw_It | 168 | 7 | 3 | 0 | **PARTIAL** |
+
+## Layer 1 - Unlimbo Seed Paths
+
+| Path | Present |
+|------|---------|
+| producedInfantry | yes |
+| producedAircraft | yes |
+| producedUnit | yes |
+| unlimboSeed | yes |
+| producedVessel | yes |
+
+## Full RA Roster by Category
+
+### Infantry (27 types)
+
+INFANTRY_NONE, INFANTRY_E1, INFANTRY_E2, INFANTRY_E3, INFANTRY_E4, INFANTRY_RENOVATOR, INFANTRY_TANYA, INFANTRY_SPY, INFANTRY_THIEF, INFANTRY_MEDIC, INFANTRY_GENERAL, INFANTRY_DOG, INFANTRY_C1, INFANTRY_C2, INFANTRY_C3, INFANTRY_C4, INFANTRY_C5, INFANTRY_C6, INFANTRY_C7, INFANTRY_C8, INFANTRY_C9, INFANTRY_C10, INFANTRY_EINSTEIN, INFANTRY_DELPHI, INFANTRY_CHAN, INFANTRY_COUNT, INFANTRY_FIRST
+
+### Unit (17 types)
+
+UNIT_NONE, UNIT_HTANK, UNIT_MTANK, UNIT_MTANK2, UNIT_LTANK, UNIT_APC, UNIT_MINELAYER, UNIT_JEEP, UNIT_HARVESTER, UNIT_ARTY, UNIT_MRJ, UNIT_MGG, UNIT_MCV, UNIT_V2_LAUNCHER, UNIT_TRUCK, UNIT_COUNT, UNIT_FIRST
+
+### Vessel (8 types)
+
+VESSEL_NONE, VESSEL_SS, VESSEL_DD, VESSEL_CA, VESSEL_TRANSPORT, VESSEL_PT, VESSEL_COUNT, VESSEL_FIRST
+
+### Aircraft (10 types)
+
+AIRCRAFT_TRANSPORT, AIRCRAFT_BADGER, AIRCRAFT_U2, AIRCRAFT_MIG, AIRCRAFT_YAK, AIRCRAFT_LONGBOW, AIRCRAFT_HIND, AIRCRAFT_COUNT, AIRCRAFT_NONE, AIRCRAFT_FIRST
+
+### Building (87 types)
+
+STRUCT_NONE, STRUCT_ADVANCED_TECH, STRUCT_IRON_CURTAIN, STRUCT_WEAP, STRUCT_CHRONOSPHERE, STRUCT_PILLBOX, STRUCT_CAMOPILLBOX, STRUCT_RADAR, STRUCT_GAP, STRUCT_TURRET, STRUCT_AAGUN, STRUCT_FLAME_TURRET, STRUCT_CONST, STRUCT_REFINERY, STRUCT_STORAGE, STRUCT_HELIPAD, STRUCT_SAM, STRUCT_AIRSTRIP, STRUCT_POWER, STRUCT_ADVANCED_POWER, STRUCT_SOVIET_TECH, STRUCT_HOSPITAL, STRUCT_BARRACKS, STRUCT_TENT, STRUCT_KENNEL, STRUCT_REPAIR, STRUCT_BIO_LAB, STRUCT_MISSION, STRUCT_SHIP_YARD, STRUCT_SUB_PEN, STRUCT_MSLO, STRUCT_FORWARD_COM, STRUCT_TESLA, STRUCT_FAKEWEAP, STRUCT_FAKECONST, STRUCT_FAKE_YARD, STRUCT_FAKE_PEN, STRUCT_FAKE_RADAR, STRUCT_SANDBAG_WALL, STRUCT_CYCLONE_WALL, STRUCT_BRICK_WALL, STRUCT_BARBWIRE_WALL, STRUCT_WOOD_WALL, STRUCT_FENCE, STRUCT_AVMINE, STRUCT_APMINE, STRUCT_V01, STRUCT_V02, STRUCT_V03, STRUCT_V04, STRUCT_V05, STRUCT_V06, STRUCT_V07, STRUCT_V08, STRUCT_V09, STRUCT_V10, STRUCT_V11, STRUCT_V12, STRUCT_V13, STRUCT_V14, STRUCT_V15, STRUCT_V16, STRUCT_V17, STRUCT_V18, STRUCT_PUMP, STRUCT_V20, STRUCT_V21, STRUCT_V22, STRUCT_V23, STRUCT_V24, STRUCT_V25, STRUCT_V26, STRUCT_V27, STRUCT_V28, STRUCT_V29, STRUCT_V30, STRUCT_V31, STRUCT_V32, STRUCT_V33, STRUCT_V34, STRUCT_V35, STRUCT_V36, STRUCT_V37, STRUCT_BARREL, STRUCT_BARREL3, STRUCT_COUNT, STRUCT_FIRST
+
+## Prioritized Gap List
+
+- No LEGACY/PARTIAL gaps detected in primary techno Draw_It paths.
+
+## Cert Gate
+
+Matrix PASS requires: UNIT/AIRCRAFT/VESSEL Layer-2 = FULL, producedVessel = yes, gameplay cert checklist complete, soak max_frame >= 7500 with no AV.
+
