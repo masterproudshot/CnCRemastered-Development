@@ -35,7 +35,9 @@
 - Include test cases that cover both normal and edge-case behavior.
 
 ### Phase 5: Build & Package
-- Build in **Release + Win32** (or x86).
+- Build in **Release + x86** with **PlatformToolset=v145** (2017-era struct compatibility).
+- Primary build tree (2026-06-20): `worktrees/bon-5k-5/CnCRemastered.sln` → `worktrees/bon-5k-5/bin/Win32/RedAlert.dll`.
+- Legacy path: `Source/Rampastring-MoreQoL` submodule (may lag active worktree).
 - Copy the resulting `RedAlert.dll` into the mod’s `Data/` folder.
 - Ensure all required files exist:
   - `ccmod.json`
@@ -45,6 +47,9 @@
 
 ### Phase 6: In-Game Testing
 - Use the appropriate launcher (Experimental / Stable).
+- **Debug soaks:** `.\Scripts\Launch-Aeloria.ps1 -Profile Experimental -DebugMode -NoCleanup`
+- **Post-session gate:** `.\Scripts\Analyze-AeloriaSoak.ps1 -Profile P4` (checks max frame, Windows AV, abrupt tail).
+- P4 north-star gate: `max_frame ≥ 7500`, no `REDALERT.DLL` access violation in Windows Application log.
 - Test using the verification notes as a checklist.
 - Confirm the mod name appears and features behave as expected.
 
@@ -68,15 +73,18 @@ Every Aeloria mod folder must contain at minimum:
 
 ## Deployment Checklist (Before Declaring "Ready to Play")
 
-- [ ] All code changes committed inside the submodule
+- [ ] All code changes committed inside the submodule (or documented worktree → submodule merge)
 - [ ] Parent repo updated with new submodule pointer
 - [ ] Git working tree is clean (no uncommitted line-ending noise; `.gitattributes` present in root and submodule; `git status` shows only intentional changes)
 - [ ] `ccmod.json` is valid and present
-- [ ] `RedAlert.dll` copied to `Data/` folder
+- [ ] `RedAlert.dll` copied to `Data/` folder (verify byte size matches expected build — e.g. 1,295,360 for 5z-n2)
 - [ ] `GameConstants_Mod.xml` present (if zoom features are expected)
 - [ ] Mod launches via launcher without crashing
+- [ ] **P4 soak PASS:** `Analyze-AeloriaSoak.ps1 -Profile P4` all gates green
+- [ ] Custom 4p Aeloria skirmish: starting units visible + harvester production tested
 - [ ] Core features from verification notes have been manually tested in a match
 - [ ] No other mods are enabled (or only intended ones)
+- [ ] `Docs/AELORIA-STATUS-*.md` and `SESSION-HANDOFF.md` updated
 - [ ] Verification notes document has been updated
 
 ---
@@ -93,7 +101,8 @@ Every Aeloria mod folder must contain at minimum:
 ---
 
 **Document Owner:** Jackson  
-**Last Updated:** May 2026
+**Last Updated:** June 2026  
+**See also:** `Docs/AELORIA-STATUS-20260620.md`, `SESSION-HANDOFF.md`
 
 ---
 
