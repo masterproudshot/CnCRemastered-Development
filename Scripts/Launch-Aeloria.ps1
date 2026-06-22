@@ -342,10 +342,25 @@ function Backup-ExistingMod($livePath) {
     return $null
 }
 
+function Test-CnCGameRunning {
+    $names = @('ClientG', 'InstanceServerG')
+    $found = Get-Process -Name $names -ErrorAction SilentlyContinue
+    if ($found) {
+        Write-Log "CnC processes active: $($found.Name -join ', ') (PIDs: $($found.Id -join ', '))" "WARN"
+        return $true
+    }
+    return $false
+}
+
 function Deploy-Profile($devPath, $livePath) {
     Write-Log "=== DEPLOY PHASE START ===" "INFO"
     Write-Log "Source: $devPath" "DEBUG"
     Write-Log "Destination: $livePath" "DEBUG"
+
+    if (Test-CnCGameRunning) {
+        Write-Log "ERROR: Refusing deploy while ClientG/InstanceServerG is running (prevents partial mod-folder delete mid-match)." "ERROR"
+        throw "Deploy blocked: game is running"
+    }
 
     if (-not (Test-Path $devPath)) {
         Write-Log "ERROR: Source profile does not exist: $devPath" "ERROR"
