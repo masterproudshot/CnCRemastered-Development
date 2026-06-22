@@ -12,8 +12,8 @@
 - **Perf:** `-D` → ~704k log lines; slowdown in big fights. `Aeloria_SyncVirtualSelectionHud` + `PopulateTechnoHudFields` (Logic_Switch_Player_Context loop) on every VIRTUAL draw for unit/inf/air.
 
 ## Git anchors
-- Submodule `improvements`: Phase D `47a5fe4` → Phase E (rotor virtual emit, FBALL stages, selection HUD).
-- Parent: `experimental` + `stable` compact doc `a43d764`; Phase E submodule commits after build.
+- Submodule `improvements`: Phase E `471e270` + build fix `9861316`.
+- Parent `stable` `b8a3eb6`; `experimental` `e25207a` (merged). Deployed Experimental DLL **1311232** bytes (2026-06-21 22:08).
 
 ## Multi-tier execution plan
 
