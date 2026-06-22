@@ -1,9 +1,9 @@
 {
   "name": "Aeloria-Stable",
-  "description": "Project Aeloria - Stable daily driver. Infantry-scale 4p skirmish, smart harvesters, rally points, P4-tuned performance (5z stack). Promoted from Experimental after dual P4 PASS soaks.",
+  "description": "Project Aeloria - Stable daily driver. Full-game cert PASS (83bb73d1): 4p skirmish, WF/aircraft/vessel crash guards (5z-n9/n10), harvester hardening. Promoted 2026-06-20.",
   "author": "Jackson",
   "load_order": 20,
-  "version_low": 2,
+  "version_low": 3,
   "version_high": 0,
   "game_type": "RA"
 }

@@ -70,7 +70,14 @@ param(
     # Do not remove the deployed mod folder from the live Documents location after the game exits.
     # Use this for "daily driver" Stable use so that simple .bat launchers continue to work afterward.
     [Alias("NC", "Permanent")]
-    [switch]$NoCleanup
+    [switch]$NoCleanup,
+
+    # Omit NO_EVENT_HANDLER (default P4 uses it for perf). Use for disconnect-popup diagnostics.
+    [Alias("EH")]
+    [switch]$WithEventHandler,
+
+    # Agent/human soak ceiling; process exit ends wait early. Default 2h (NS long matches).
+    [int]$SoakTimeoutSec = 7200
 )
 
 $ErrorActionPreference = "Stop"
@@ -405,9 +412,14 @@ function Capture-LatestCrashReport {
         return $null
     }
 
-    $latest = Get-ChildItem -Path $CrashSource -Filter "InstanceServerG-exe_*.zip" -ErrorAction SilentlyContinue |
+    $latest = Get-ChildItem -Path $CrashSource -Filter "*ServerG-exe_*.zip" -ErrorAction SilentlyContinue |
               Where-Object { $_.LastWriteTime -ge $NotOlderThan } |
               Sort-Object LastWriteTime -Descending | Select-Object -First 1
+    if (-not $latest) {
+        $latest = Get-ChildItem -Path $CrashSource -Filter "ClientG-exe_*.zip" -ErrorAction SilentlyContinue |
+                  Where-Object { $_.LastWriteTime -ge $NotOlderThan } |
+                  Sort-Object LastWriteTime -Descending | Select-Object -First 1
+    }
 
     if ($latest) {
         $destName = "Crash_$(Get-Date -Format 'yyyyMMdd_HHmmss').zip"
@@ -416,6 +428,22 @@ function Capture-LatestCrashReport {
         Write-Log "Captured crash report from this session: $destPath (source: $($latest.Name), $($latest.LastWriteTime))" "WARN"
         return $destPath
     }
+
+    # WER archive fallback when Steam crash folder has no zip yet.
+    $werRoot = Join-Path $env:ProgramData 'Microsoft\Windows\WER\ReportArchive'
+    if (Test-Path $werRoot) {
+        $werLatest = Get-ChildItem -Path $werRoot -Directory -ErrorAction SilentlyContinue |
+                     Where-Object { $_.Name -match 'InstanceServerG|ClientG' -and $_.LastWriteTime -ge $NotOlderThan } |
+                     Sort-Object LastWriteTime -Descending | Select-Object -First 1
+        if ($werLatest) {
+            $destName = "Crash_WER_$(Get-Date -Format 'yyyyMMdd_HHmmss')"
+            $destPath = Join-Path $CrashDir $destName
+            Copy-Item -Path $werLatest.FullName -Destination $destPath -Recurse -Force
+            Write-Log "Captured WER crash report from this session: $destPath (source: $($werLatest.Name))" "WARN"
+            return $destPath
+        }
+    }
+
     Write-Log "No crash reports from this session (ignoring stale zips before $NotOlderThan)." "INFO"
     return $null
 }
@@ -532,7 +560,7 @@ function Wait-ForGameExit {
     Write-Log "Game window is visible. Now monitoring for clean exit..." "INFO"
 
     $processes = @("ClientG", "InstanceServerG")
-    $timeoutSeconds = 3600   # agent soak ceiling (P3/P4); process exit ends wait early
+    $timeoutSeconds = $SoakTimeoutSec
 
     Write-Log "Monitoring via Wait-Process (timeout ${timeoutSeconds}s)." "INFO"
     Wait-Process -Name $processes -ErrorAction SilentlyContinue -Timeout $timeoutSeconds
@@ -710,12 +738,17 @@ try {
     # Launch
     Set-Variable -Name CurrentState -Scope Script -Value ([LauncherState]::Launching)
 
-    $launchArgs = "REDALERT MOD=$($script:SelectedProfile.Name) -FastLaunch NO_EVENT_HANDLER"
+    $launchArgs = "REDALERT MOD=$($script:SelectedProfile.Name) -FastLaunch"
+    if (-not $WithEventHandler) {
+        $launchArgs += " NO_EVENT_HANDLER"
+    }
     if ($DebugMode) {
         $launchArgs += " MOD_DEBUG"
         Write-Log "Debug flags (MOD_DEBUG) added to launch arguments. (Verbose logging env var was already set for the whole session above.)" "INFO"
+    } elseif ($WithEventHandler) {
+        Write-Log "WithEventHandler: NO_EVENT_HANDLER omitted (event handler enabled for this session)." "INFO"
     } else {
-        Write-Log "P4 perf: NO_EVENT_HANDLER always on (debug -D adds MOD_DEBUG only)." "INFO"
+        Write-Log "P4 perf: NO_EVENT_HANDLER on (use -WithEventHandler to omit; -D adds MOD_DEBUG)." "INFO"
     }
 
     Write-Log "Launch arguments: $launchArgs" "INFO"
@@ -834,6 +867,12 @@ try {
                     Write-Host ""
                     Write-Host ">>> AELORIA SOAK AUTO-ANALYSIS ($soakProfile gates):" -ForegroundColor Cyan
                     & $analyzeScript -DebugLog $destPath -Profile $soakProfile -LauncherLog $script:LogFile
+                    if ($script:LogFile -and (Test-Path -LiteralPath $script:LogFile)) {
+                        $werInLauncher = Select-String -Path $script:LogFile -Pattern 'Captured WER crash report|Crash_WER_' -ErrorAction SilentlyContinue | Select-Object -First 1
+                        if ($werInLauncher) {
+                            Write-Host "FAIL: crash_wer_captured - WER crash report was archived this session (see launcher log)." -ForegroundColor Red
+                        }
+                    }
                 } catch {
                     Write-Log "WARN: Analyze-AeloriaSoak.ps1 failed: $_" "WARN"
                 }

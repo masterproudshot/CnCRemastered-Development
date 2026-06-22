@@ -2,8 +2,8 @@
 
 **Project:** Project Aeloria  
 **Phase:** Moderate Cleanup (Stable Profile)  
-**Date:** May 2026  
-**Status:** Initial Test Plan
+**Date:** May 2026 (stability addendum: June 2026)  
+**Status:** Initial Test Plan + mid-game stability notes
 
 ---
 
@@ -223,7 +223,22 @@ These are noted here but **not** part of the Moderate cleanup:
 ---
 
 **Document Owner:** Jackson  
-**Last Updated:** May 2026
+## Mid-Game Stability Addendum (June 2026)
+
+Harvester **production** (refinery grand opening + war factory) is on the north-star critical path. Verify during P4 soaks:
+
+| Check | Pass signal | Fail signal |
+|-------|-------------|-------------|
+| Refinery harvester spawn | `GRAND_OPENING_HARVESTER_OK` in log | Immediate exit after `HARVESTER_UNLIMBO_TRACK` |
+| War-factory harvester | `PRODUCED_UNIT_FIRST_DRAW window=MAIN` | `SAFE_SHAPE_EMIT` or abrupt log tail |
+| Bulk export position | `GET_LAYER_BULK_HASCREATION_INSERT pos=(≥0,≥0)` | `pos=(-12,-24)` or `BULK_SKIP_INVALID_POS` storm |
+| Session duration | `Analyze-AeloriaSoak.ps1 -Profile P4` PASS | Windows AV `REDALERT.DLL+0x...` |
+
+**Known fixes:** 5z-n (intercept `Class->` reads), 5z-n2 (bulk position + idx stomp). See `Docs/AELORIA-STATUS-20260620.md`.
+
+---
+
+**Last Updated:** June 2026
 
 ---
 

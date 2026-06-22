@@ -18,7 +18,7 @@
 [CmdletBinding()]
 param(
     [string]$DebugLog,
-    [ValidateSet('P1','P3','P4')]
+    [ValidateSet('P1','P3','P4','NS')]
     [string]$Profile = 'P1',
     [string]$LauncherLog
 )
@@ -103,15 +103,21 @@ foreach ($line in $content) {
 $wfBuilt = @($content | Where-Object { $_ -match 'BUILDING_GRAND_OPENING_COMPLETE.*type_enum=2\b' -or $_ -match 'CONSTRUCTION_COMPLETE.*type_enum=2\b' })
 
 # Abrupt tail: log ends mid-burst without a recent graceful marker
+$sessionShutdownMarkers = @('FINAL STATE', 'CNC_Shutdown', 'GAME_OVER', 'PLAYER_EXIT', 'AELORIA_SESSION_END')
+$sessionShutdownSeen = $false
+foreach ($marker in $sessionShutdownMarkers) {
+    if ($content -match [regex]::Escape($marker)) { $sessionShutdownSeen = $true; break }
+}
 $tailLines = if ($lineCount -ge 20) { $content[-20..-1] } else { $content }
 $tailLast5 = if ($lineCount -ge 5) { $content[-5..-1] } else { $content }
-$abruptTail = $true
-foreach ($marker in @('FINAL STATE', 'CNC_Shutdown', 'GAME_OVER', 'PLAYER_EXIT')) {
-    if ($content -match [regex]::Escape($marker)) { $abruptTail = $false; break }
-}
-# Heuristic: if max frame is high and last lines are routine draw/bulk, not necessarily abrupt
-if ($maxFrame -ge 1000 -and $tailLines -match 'frame=') {
-    $abruptTail = $false
+$tailLast30 = if ($lineCount -ge 30) { $content[-30..-1] } else { $content }
+$abruptTail = -not $sessionShutdownSeen
+# Building-placement crash class: tail ends on construction/place without shutdown (5z-n9 PR6).
+if (-not $sessionShutdownSeen) {
+    $buildingTailMarkers = @($tailLast30 | Where-Object {
+        $_ -match 'CONSTRUCTION_COMPLETE' -or $_ -match 'PLACE_CLICK'
+    })
+    if ($buildingTailMarkers.Count -gt 0) { $abruptTail = $true }
 }
 # Known crash signatures: harvester first draw or safe-shape emit without shutdown (5z-n).
 $crashTailMarkers = @($tailLast5 | Where-Object {
@@ -126,13 +132,24 @@ if ($trackingClearedTail.Count -ge 3) {
     $abruptTail = $true
 }
 
-# Windows Application Error AV in REDALERT.DLL during session (crash zip often missing).
+# Windows Application Error AV in game EXEs during session (crash zip often missing).
 $windowsAv = $null
 $sessionStart = $null
+$sessionEnd = $null
+$wallClockMinutes = $null
 if ($LauncherLog -and (Test-Path -LiteralPath $LauncherLog)) {
     $startMatch = Select-String -Path $LauncherLog -Pattern 'Launcher Started' -SimpleMatch -ErrorAction SilentlyContinue | Select-Object -First 1
     if ($startMatch -and $startMatch.Line -match '\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})') {
         $sessionStart = [datetime]::ParseExact($Matches[1], 'yyyy-MM-dd HH:mm:ss', $null)
+    }
+    $visibleMatch = Select-String -Path $LauncherLog -Pattern 'Visible game window detected' -SimpleMatch -ErrorAction SilentlyContinue | Select-Object -First 1
+    $exitMatch = Select-String -Path $LauncherLog -Pattern 'Game processes have exited' -SimpleMatch -ErrorAction SilentlyContinue | Select-Object -Last 1
+    if ($visibleMatch -and $visibleMatch.Line -match '\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})') {
+        $visibleAt = [datetime]::ParseExact($Matches[1], 'yyyy-MM-dd HH:mm:ss', $null)
+        if ($exitMatch -and $exitMatch.Line -match '\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})') {
+            $sessionEnd = [datetime]::ParseExact($Matches[1], 'yyyy-MM-dd HH:mm:ss', $null)
+            $wallClockMinutes = ($sessionEnd - $visibleAt).TotalMinutes
+        }
     }
 }
 if (-not $sessionStart -and $content.Count -gt 0 -and $content[0] -match 'started (\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})') {
@@ -143,37 +160,45 @@ try {
         LogName = 'Application'
         ProviderName = 'Application Error'
         Level = 2
-    } -MaxEvents 30 -ErrorAction SilentlyContinue
+    } -MaxEvents 80 -ErrorAction SilentlyContinue
     foreach ($ev in $avEvents) {
-        if ($sessionStart -and $ev.TimeCreated -lt $sessionStart) { continue }
+        if ($sessionStart -and $ev.TimeCreated -lt $sessionStart.AddMinutes(-1)) { continue }
         $msg = $ev.Message
-        if ($msg -match 'InstanceServerG\.exe' -and $msg -match '0xc0000005|0xc000001d|0xc0000096') {
-            $modName = if ($msg -match 'Faulting module name:\s*(\S+)') { $Matches[1] } else { 'unknown' }
-            if ($modName -notmatch '^(REDALERT\.DLL|VCRUNTIME140\.dll|MSVCP140\.dll|ucrtbase\.dll)$') { continue }
-            $offset = if ($msg -match 'Fault offset:\s*(0x[0-9a-fA-F]+)') { $Matches[1] } else { 'unknown' }
-            $modPath = if ($msg -match 'Faulting module path:\s*(.+)') { $Matches[1].Trim() } else { '' }
-            $windowsAv = "AV $offset @ $modName @ $modPath @ $($ev.TimeCreated.ToString('yyyy-MM-dd HH:mm:ss'))"
-            break
-        }
+        if ($msg -notmatch '(InstanceServerG\.exe|ClientG\.exe)' -or $msg -notmatch '0xc0000005|0xc000001d|0xc0000096') { continue }
+        $modName = if ($msg -match 'Faulting module name:\s*(\S+)') { $Matches[1] } else { 'unknown' }
+        if ($modName -notmatch '^(REDALERT\.DLL|VCRUNTIME140\.dll|MSVCP140\.dll|ucrtbase\.dll|ClientG\.exe|InstanceServerG\.exe)$') { continue }
+        $exe = if ($msg -match 'Faulting application name:\s*(\S+)') { $Matches[1] } else { 'unknown' }
+        $offset = if ($msg -match 'Fault offset:\s*(0x[0-9a-fA-F]+)') { $Matches[1] } else { 'unknown' }
+        $modPath = if ($msg -match 'Faulting module path:\s*(.+)') { $Matches[1].Trim() } else { '' }
+        $windowsAv = "AV $exe $offset @ $modName @ $modPath @ $($ev.TimeCreated.ToString('yyyy-MM-dd HH:mm:ss'))"
+        break
     }
 } catch {
     # Get-WinEvent unavailable — skip gate
 }
 
 $crashZip = $null
+$crashWerCaptured = $false
 if ($LauncherLog -and (Test-Path -LiteralPath $LauncherLog)) {
     $crashMatch = Select-String -Path $LauncherLog -Pattern 'Crash report:' -SimpleMatch -ErrorAction SilentlyContinue | Select-Object -Last 1
     if ($crashMatch -and $crashMatch.Line -match 'Crash report:\s*(.+\.zip)') {
         $crashZip = $Matches[1].Trim()
     }
+    $werMatch = Select-String -Path $LauncherLog -Pattern 'Captured WER crash report|Crash_WER_' -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($werMatch) { $crashWerCaptured = $true }
 }
+
+# no_crash_zip: no Steam zip, no WER archive, and AV must correlate with a zip when present (5z-n9 PR6).
+$noCrashZipPass = (-not $crashZip) -and (-not $crashWerCaptured)
+if ($windowsAv -and -not $crashZip) { $noCrashZipPass = $false }
 
 $gates = [ordered]@{}
 switch ($Profile) {
     'P1' {
         $gates['max_frame_ge_7500'] = ($maxFrame -ge 7500)
         $gates['no_abrupt_tail'] = (-not $abruptTail)
-        $gates['no_crash_zip'] = (-not $crashZip)
+        $gates['crash_wer_captured'] = (-not $crashWerCaptured)
+        $gates['no_crash_zip'] = $noCrashZipPass
         $gates['no_windows_av'] = (-not $windowsAv)
         $gates['no_bulk_idx_gap'] = (-not $bulkIdxGap)
         if ($anyProducedUnlimbo.Count -gt 0 -or $wfBuilt.Count -gt 0) {
@@ -186,7 +211,8 @@ switch ($Profile) {
     'P3' {
         $gates['max_frame_ge_27000'] = ($maxFrame -ge 27000)
         $gates['no_abrupt_tail'] = (-not $abruptTail)
-        $gates['no_crash_zip'] = (-not $crashZip)
+        $gates['crash_wer_captured'] = (-not $crashWerCaptured)
+        $gates['no_crash_zip'] = $noCrashZipPass
         $gates['no_windows_av'] = (-not $windowsAv)
         $gates['tank_unlimbos_ge_2'] = ($tankUnlimbos.Count -ge 2)
         $gates['harvester_relocate_plus_100'] = ($lastHarvesterRelocateFrame -eq 0 -or ($maxFrame -ge $lastHarvesterRelocateFrame + 100))
@@ -194,7 +220,19 @@ switch ($Profile) {
     'P4' {
         $gates['max_frame_ge_7500'] = ($maxFrame -ge 7500)
         $gates['no_abrupt_tail'] = (-not $abruptTail)
-        $gates['no_crash_zip'] = (-not $crashZip)
+        $gates['crash_wer_captured'] = (-not $crashWerCaptured)
+        $gates['no_crash_zip'] = $noCrashZipPass
+        $gates['no_windows_av'] = (-not $windowsAv)
+        $gates['no_bulk_idx_gap'] = (-not $bulkIdxGap)
+        $gates['no_foot_sustain_spam'] = (-not $footSustainSpam)
+        $gates['log_exists'] = $true
+    }
+    'NS' {
+        $gates['max_frame_ge_40000'] = ($maxFrame -ge 40000)
+        $gates['min_wall_clock_ge_20min'] = ($null -ne $wallClockMinutes -and $wallClockMinutes -ge 20)
+        $gates['no_abrupt_tail'] = (-not $abruptTail)
+        $gates['crash_wer_captured'] = (-not $crashWerCaptured)
+        $gates['no_crash_zip'] = $noCrashZipPass
         $gates['no_windows_av'] = (-not $windowsAv)
         $gates['no_bulk_idx_gap'] = (-not $bulkIdxGap)
         $gates['no_foot_sustain_spam'] = (-not $footSustainSpam)
@@ -208,10 +246,15 @@ $pass = ($failed.Count -eq 0)
 Write-Host "=== AELORIA SOAK ANALYSIS ($Profile) ===" -ForegroundColor Cyan
 Write-Host "Log: $DebugLog"
 Write-Host "Lines: $lineCount | MaxFrame: $maxFrame"
+if ($Profile -eq 'P1' -and $lineCount -gt 200000) {
+    Write-Host "WARN: P1 log line count $lineCount exceeds 200000 (possible log throttle regression)" -ForegroundColor Yellow
+}
 Write-Host "Tank unlimbos: $($tankUnlimbos.Count) | Jeep: $($jeepUnlimbos.Count) | Any produced: $($anyProducedUnlimbo.Count)"
 Write-Host "Harvester relocate last frame: $lastHarvesterRelocateFrame | Bulk stomp: $($bulkStomp.Count) | Bulk idx gap: $bulkIdxGap | Foot sustain spam: $footSustainSpam"
+if ($null -ne $wallClockMinutes) { Write-Host "Wall clock (visible->exit): $([math]::Round($wallClockMinutes, 1)) min" }
 Write-Host "Produced first draw VIRTUAL/MAIN: $($producedFirstDrawVirtual.Count)/$($producedFirstDrawMain.Count)"
 if ($crashZip) { Write-Host "Crash zip: $crashZip" -ForegroundColor Yellow }
+if ($crashWerCaptured) { Write-Host "WER crash archive captured (launcher log)" -ForegroundColor Yellow }
 if ($windowsAv) { Write-Host "Windows AV: $windowsAv" -ForegroundColor Yellow }
 
 foreach ($kv in $gates.GetEnumerator()) {
