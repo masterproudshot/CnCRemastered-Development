@@ -12,8 +12,9 @@
 - **Perf:** `-D` → ~704k log lines; slowdown in big fights. `Aeloria_SyncVirtualSelectionHud` + `PopulateTechnoHudFields` (Logic_Switch_Player_Context loop) on every VIRTUAL draw for unit/inf/air.
 
 ## Git anchors
-- Submodule `improvements`: Phase E `471e270` + build fix `9861316` (rotor virtual emit, FBALL stages, selection HUD).
-- Parent `stable` / `experimental`: `b8a3eb6` (handoff + launch/soak); live Experimental DLL **1311232** bytes (2026-06-21 22:08).
+- Submodule `improvements`: Phase E.1 `4b8e738` (VIRTUAL export past bad +8; rotor LAYERS chain); prior E `9861316` / `471e270`.
+- Parent `stable` / `experimental`: unified at promote (Phase E.1 `1e7af9e`, launcher deploy guard `95dab2d`). DLL **1312256** bytes (infantry-scale Release x86).
+- Playtest `ef4cfe9d-8498`: ~120 min smooth soak PASS; helis/flame/Mig VFX still open → E.2.
 
 ## Multi-tier execution plan
 
