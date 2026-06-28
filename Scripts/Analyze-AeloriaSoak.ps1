@@ -192,6 +192,13 @@ if ($LauncherLog -and (Test-Path -LiteralPath $LauncherLog)) {
 $noCrashZipPass = (-not $crashZip) -and (-not $crashWerCaptured)
 if ($windowsAv -and -not $crashZip) { $noCrashZipPass = $false }
 
+# Missing AELORIA_SESSION_END is normal when quitting from the game UI (DLL Shutdown often not called).
+if ($abruptTail -and -not $sessionShutdownSeen -and $maxFrame -ge 7500 -and $noCrashZipPass -and -not $windowsAv) {
+    if ($buildingTailMarkers.Count -eq 0 -and $crashTailMarkers.Count -eq 0 -and $trackingClearedTail.Count -lt 3) {
+        $abruptTail = $false
+    }
+}
+
 $gates = [ordered]@{}
 switch ($Profile) {
     'P1' {
