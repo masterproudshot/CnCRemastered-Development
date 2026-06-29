@@ -1,6 +1,6 @@
 {
   "name": "Aeloria-Stable",
-  "description": "Project Aeloria - Stable daily driver. Full-game cert PASS (83bb73d1): 4p skirmish, WF/aircraft/vessel crash guards (5z-n9/n10), harvester hardening. Promoted 2026-06-20.",
+  "description": "Project Aeloria - Stable daily driver. E.2.9/E.2.10 promoted 2026-06-28: aircraft eternal pin (spy+helis), perf logging/prune. Submodule 9ad2ae4. Late-game FPS: use Experimental for E.2.11.",
   "author": "Jackson",
   "load_order": 20,
   "version_low": 3,
