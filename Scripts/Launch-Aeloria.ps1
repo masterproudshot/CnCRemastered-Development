@@ -819,6 +819,37 @@ try {
         $foundLog = $null
         $launchStartTime = (Get-Item $script:LogFile).CreationTime
 
+        # E.2.13e: DLL attach log proves whether RedAlert.dll loaded (menu-only exits often have neither).
+        $dllAttachPatterns = @(
+            "$env:USERPROFILE\Aeloria-DllAttach-*.log",
+            ".\Aeloria-DllAttach-*.log",
+            "$LogDir\Aeloria-DllAttach-*.log"
+        )
+        $foundAttachLog = $null
+        foreach ($pattern in $dllAttachPatterns) {
+            $attachCandidates = Get-ChildItem -Path $pattern -ErrorAction SilentlyContinue |
+                                Where-Object { $_.LastWriteTime -gt $launchStartTime.AddMinutes(-2) } |
+                                Sort-Object LastWriteTime -Descending
+            if ($attachCandidates) {
+                $foundAttachLog = $attachCandidates[0]
+                break
+            }
+        }
+        if ($foundAttachLog) {
+            $attachDest = Join-Path $LogDir ("Aeloria-DllAttach_$(Get-Date -Format 'yyyyMMdd_HHmmss')_$($script:DebugShortId).log")
+            try {
+                Copy-Item -Path $foundAttachLog.FullName -Destination $attachDest -Force -ErrorAction Stop
+                Write-Log "Collected Aeloria DLL attach log -> $attachDest" "INFO"
+                Get-Content -LiteralPath $attachDest -Tail 5 -ErrorAction SilentlyContinue | ForEach-Object {
+                    Write-Log "  DLL_ATTACH: $_" "INFO"
+                }
+            } catch {
+                Write-Log "WARN: Failed to collect DLL attach log from $($foundAttachLog.FullName): $_" "WARN"
+            }
+        } elseif ($script:GameWindowWasVisible) {
+            Write-Log "WARN: No Aeloria-DllAttach log this session - RedAlert.dll never loaded (title-menu-only exit or ClientG crash)." "WARN"
+        }
+
         foreach ($pattern in $aeloriaLogPatterns) {
             $candidates = Get-ChildItem -Path $pattern -ErrorAction SilentlyContinue |
                           Where-Object { $_.LastWriteTime -gt $launchStartTime.AddMinutes(-2) } |
