@@ -55,9 +55,9 @@ foreach ($line in $content) {
 }
 
 # Produced unit unlimbos (type_enum=2 is light tank in RA)
-$tankUnlimbos = @($content | Where-Object { $_ -match 'PRODUCED_UNIT_UNLIMBO_SEED.*type_enum=2\b' })
-$jeepUnlimbos = @($content | Where-Object { $_ -match 'PRODUCED_UNIT_UNLIMBO_SEED.*type_enum=1\b' })
-$anyProducedUnlimbo = @($content | Where-Object { $_ -match 'PRODUCED_UNIT_UNLIMBO_SEED' })
+$tankUnlimbos = @($content | Where-Object { $_ -match 'PRODUCED_UNIT_UNLIMBO_(LITE_)?SEED.*type_enum=2\b' })
+$jeepUnlimbos = @($content | Where-Object { $_ -match 'PRODUCED_UNIT_UNLIMBO_(LITE_)?SEED.*type_enum=1\b' })
+$anyProducedUnlimbo = @($content | Where-Object { $_ -match 'PRODUCED_UNIT_UNLIMBO_(LITE_)?SEED' })
 $harvesterRelocate = @($content | Where-Object { $_ -match 'HARVESTER_STABILITY_RELOCATE' })
 $lastHarvesterRelocateFrame = 0
 foreach ($line in $harvesterRelocate) {
@@ -199,11 +199,46 @@ if ($abruptTail -and -not $sessionShutdownSeen -and $maxFrame -ge 7500 -and $noC
     }
 }
 
+# E.2.45 lifecycle gates
+$liveArmLines = @($content | Where-Object { $_ -match 'LIVE_SKIRMISH_ARMED|PENDING_MISSION_TIMER_APPLIED' })
+$firstLiveArmLineIndex = -1
+for ($i = 0; $i -lt $content.Count; $i++) {
+    if ($content[$i] -match 'LIVE_SKIRMISH_ARMED|PENDING_MISSION_TIMER_APPLIED') {
+        $firstLiveArmLineIndex = $i
+        break
+    }
+}
+$unitGuardBeforeLiveArm = $false
+if ($firstLiveArmLineIndex -lt 0) {
+    $unitGuardBeforeLiveArm = @($content | Where-Object { $_ -match 'Unit guard passed|Infantry guard passed' }).Count -gt 0
+} else {
+    for ($i = 0; $i -lt $firstLiveArmLineIndex; $i++) {
+        if ($content[$i] -match 'Unit guard passed|Infantry guard passed') {
+            $unitGuardBeforeLiveArm = $true
+            break
+        }
+    }
+}
+$previewMassCreationPrune = $false
+foreach ($line in $content) {
+    if ($line -match 'DEAD_TRACKING_PRUNED.*creation=(\d+)') {
+        $prunedCreation = [int]$Matches[1]
+        if ($prunedCreation -ge 1 -and $line -match 'frame=(\d+)') {
+            $pruneFrame = [int]$Matches[1]
+            if ($pruneFrame -lt 60 -and $liveArmLines.Count -eq 0) {
+                $previewMassCreationPrune = $true
+            }
+        }
+    }
+}
+
 $gates = [ordered]@{}
 switch ($Profile) {
     'P1' {
         $gates['max_frame_ge_7500'] = ($maxFrame -ge 7500)
         $gates['no_abrupt_tail'] = (-not $abruptTail)
+        $gates['no_preview_mass_creation_prune'] = (-not $previewMassCreationPrune)
+        $gates['no_unit_guard_before_live_arm'] = (-not $unitGuardBeforeLiveArm)
         $gates['crash_wer_captured'] = (-not $crashWerCaptured)
         $gates['no_crash_zip'] = $noCrashZipPass
         $gates['no_windows_av'] = (-not $windowsAv)
@@ -227,6 +262,8 @@ switch ($Profile) {
     'P4' {
         $gates['max_frame_ge_7500'] = ($maxFrame -ge 7500)
         $gates['no_abrupt_tail'] = (-not $abruptTail)
+        $gates['no_preview_mass_creation_prune'] = (-not $previewMassCreationPrune)
+        $gates['no_unit_guard_before_live_arm'] = (-not $unitGuardBeforeLiveArm)
         $gates['crash_wer_captured'] = (-not $crashWerCaptured)
         $gates['no_crash_zip'] = $noCrashZipPass
         $gates['no_windows_av'] = (-not $windowsAv)
@@ -271,6 +308,9 @@ foreach ($kv in $gates.GetEnumerator()) {
 }
 
 $verdict = if ($pass) { "PASS" } else { "FAIL: $($failed -join ', ')" }
+if (-not $pass -and $windowsAv) {
+    $verdict += " | correlate: $windowsAv"
+}
 Write-Host "VERDICT: $verdict" -ForegroundColor $(if ($pass) { 'Green' } else { 'Red' })
 Write-Output $verdict
 exit $(if ($pass) { 0 } else { 1 })

@@ -132,6 +132,22 @@ function Get-MSBuildPath {
     return $null
 }
 
+function Set-AeloriaVerboseDrawFlag {
+    param(
+        [Parameter(Mandatory = $true)][string]$ProfileRoot,
+        [bool]$Enable
+    )
+    $flagPath = Join-Path $ProfileRoot "Data\AeloriaVerboseDraw.flag"
+    if ($Enable) {
+        $null = New-Item -ItemType Directory -Path (Split-Path $flagPath -Parent) -Force -ErrorAction SilentlyContinue
+        Set-Content -LiteralPath $flagPath -Value "1" -Encoding ascii -Force
+        Write-Log "Verbose draw flag ON (Steam -applaunch path): $flagPath" "INFO"
+    } elseif (Test-Path -LiteralPath $flagPath) {
+        Remove-Item -LiteralPath $flagPath -Force
+        Write-Log "Verbose draw flag removed: $flagPath" "INFO"
+    }
+}
+
 function Invoke-AutoDeployDll {
     Write-Log "AutoDeployDll requested - looking for newest RedAlert.dll in build output..." "INFO"
 
@@ -718,6 +734,7 @@ try {
             # Always stage the fresh build into the Development profile so -B -NC cannot deploy a stale Dev DLL.
             Write-Log "Build completed successfully - staging fresh DLL into Development profile..." "INFO"
             Invoke-AutoDeployDll
+            Set-AeloriaVerboseDrawFlag -ProfileRoot $script:SelectedProfile.DevPath -Enable:([bool]$DebugMode)
         } catch {
             Write-Log "ERROR during build step: $_" "ERROR"
             throw
@@ -734,6 +751,9 @@ try {
     }
 
     Set-Variable -Name CurrentState -Scope Script -Value ([LauncherState]::Deploying)
+    if (-not $BuildFirst) {
+        Set-AeloriaVerboseDrawFlag -ProfileRoot $script:SelectedProfile.DevPath -Enable:([bool]$DebugMode)
+    }
     Deploy-Profile $script:SelectedProfile.DevPath $script:SelectedProfile.LivePath
 
     # Quick post-deploy verification (especially useful for -NoCleanup / Experimental)
@@ -773,9 +793,15 @@ try {
     Set-Variable -Name CurrentState -Scope Script -Value ([LauncherState]::Monitoring)
     Wait-ForGameExit
 
-    # Capture crash report
+    # Capture crash report (WER/Steam zips often land a few seconds after process exit).
     Set-Variable -Name CurrentState -Scope Script -Value ([LauncherState]::CapturingCrash)
+    Start-Sleep -Seconds 3
     $script:LatestCrashReport = Capture-LatestCrashReport
+    if (-not $script:LatestCrashReport) {
+        Write-Log "No crash zip yet; polling WER/Steam once more after 8s..." "INFO"
+        Start-Sleep -Seconds 8
+        $script:LatestCrashReport = Capture-LatestCrashReport
+    }
 
 } catch {
     Write-Log "FATAL ERROR: $_" "ERROR"
