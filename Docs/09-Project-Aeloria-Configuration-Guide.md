@@ -143,6 +143,25 @@ MaxZoomLevel=35
 
 ---
 
+## Runtime environment (launcher / DLL)
+
+These are **not** INI settings — they are process environment variables set by `Scripts/Launch-Aeloria.ps1` or manually before launch.
+
+### `AELORIA_QUIET` (E.2.50 non-debug performance)
+
+| Value | Effect |
+|-------|--------|
+| `1` (default for non-`-DebugMode` launcher runs) | When verbose draw logging is off, rate-limit high-volume **critical** log families: `CONSTRUCTION_SEED`, `PRODUCED_UNIT_FIRST_DRAW`, `BUILDING_STAB_REFRESH`, `HARVESTER_*`. Milestone lines (`SEVERE`, `LIVE_SKIRMISH`, `PREVIEW_PRUNE`, `DEAD_TRACKING`, `AELORIA_SESSION`, `CNC_INIT`) are never throttled. Also throttles preview-only `Get_Layer_State` prune/ensure on loaded maps. |
+| `0` / unset in debug | Full critical-path logging (still no per-draw verbose spam unless verbose is on). |
+
+**Launcher behavior:**
+- **`-DebugMode` (`-D`)** — sets `AELORIA_ENABLE_VERBOSE_DRAW_LOGS=1`; does **not** force quiet mode (leave `AELORIA_QUIET` as you set it, or unset).
+- **Normal play (no `-D`)** — sets `AELORIA_ENABLE_VERBOSE_DRAW_LOGS=0` and `AELORIA_QUIET=1` unless you already exported `AELORIA_QUIET`.
+
+**When to use `-DebugMode` instead:** Any stability investigation, custom map soak, or invisibility RCA — you need the full per-object guard trail. Quiet mode is for daily-driver / soak performance (P4 profile).
+
+---
+
 ## Transition from [MoreQoL]
 
 During the Moderate phase, all Aeloria sections fall back to `[MoreQoL]` if the setting is not found. This allows old mods to continue working while you migrate.

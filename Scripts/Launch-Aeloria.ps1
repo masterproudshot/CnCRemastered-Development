@@ -671,6 +671,11 @@ try {
         # This is more reliable than just Remove-Item for ensuring normal play is silent.
         $env:AELORIA_ENABLE_VERBOSE_DRAW_LOGS = "0"
         Write-Log "Normal (non-Debug) session: AELORIA_ENABLE_VERBOSE_DRAW_LOGS explicitly set to 0 (verbose draw logs should be suppressed)" "INFO"
+        # E.2.50: non-debug perf — quiet critical log families unless user already set AELORIA_QUIET.
+        if (-not $env:AELORIA_QUIET) {
+            $env:AELORIA_QUIET = "1"
+        }
+        Write-Log "Normal (non-Debug) session: AELORIA_QUIET=$($env:AELORIA_QUIET) (rate-limits CONSTRUCTION_SEED/PRODUCED_UNIT_FIRST_DRAW/BUILDING_STAB_REFRESH/HARVESTER_ critical logs)" "INFO"
     }
 
     # Stage newest built DLL into the Development profile before copying to live.
