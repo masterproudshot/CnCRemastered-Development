@@ -15,8 +15,9 @@
 | 4 | PR 4 E.2.52* **skipped**, PR 11 B3 | done | *PR4 skipped; B3 landed |
 | 5 | PR 5 C1–C3 | done | analyzer / WER hygiene |
 | 6 | PR 6 B4, PR 7 A5 | done | map integration + promote docs |
-| 7 | E.2.56+58 populate | landed (build pending) | V2 5+ min visibility soak |
-| 8 | User soak | USER soak pending | P4 ≥7500, no WER |
+| 7 | E.2.56+58 populate | done | soak `d693a684` launch visibility OK |
+| 8 | User soak (stability/perf) | done | long `-NC`, no crash, good speed |
+| 9 | E.2.59 regional LAYERS | planned | bottom-⅓ technos visible @ 15+ min |
 
 ## User gates
 
@@ -27,5 +28,6 @@
 
 | Session | Issue |
 |---------|--------|
+| `d693a684-49e9` | E.2.56+58 pass; late bottom-⅓ **object** invisibility (terrain OK) |
 | `1c4c2d18-c1be` | Late DLL AV `000b7fdf` ~frame 58659 |
 | E.2.45–48 | M0 preview gates (landed) |
