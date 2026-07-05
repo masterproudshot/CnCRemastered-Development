@@ -2,8 +2,10 @@
 param(
     [string] $Name = "AIGen_Test",
     [int] $Seed = 42,
-    [int] $Players = 4,
-    [int] $Size = 64,
+    [int] $Players = 8,
+    [Alias("MapSize")]
+    [int] $Size = 126,
+    [string] $SpawnLayout = "octagonOpen",
     [double] $OreDensity = 0.72,
     [double] $GemDensity = 0.06,
     [int] $Mines = 16,
@@ -44,6 +46,7 @@ $cliArgs = @(
     "--seed", $Seed,
     "--players", $Players,
     "--size", $Size,
+    "--spawn-layout", $SpawnLayout,
     "--ore", $OreDensity,
     "--gems", $GemDensity,
     "--mines", $Mines,
