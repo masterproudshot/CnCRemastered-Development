@@ -170,6 +170,12 @@ Soak `d8ee4506-c453` (74 min PASS); log `Logs/Aeloria-Debug_20260627_165256_d8ee
 
 <!-- E.2.52 (Start transition hardening) skipped — no repro after E.2.49–51; conditional per unified plan PR 4. -->
 
+## E.2.54 (E.2.53 launch crash — preview safe emit flood)
+
+- **Symptom:** Soak `1a02369b-6831` — crash during skirmish launch @ frame **0** (~4 min wall); WER on `InstanceServer`; **221** `BULK_SLOT_STOMP_GUARD`; **350+** `PREVIEW_SAFE_LAYER_EMIT` with `owner=-1` `pos=(0,0)`.
+- **Cause:** E.2.53 treated all active `Map.Layer` techno as preview-walkable and emitted safe slots for `unsafe_layer_obj` without export-safe / tracked gates; `(0,0)` passed bulk pixel bounds.
+- **Fix:** `Aeloria_IsPreviewLayerWalkObjectPtr` → `Aeloria_PreviewSkirmishTrackingRetain` only; remove unsafe-layer placeholder path; `Aeloria_IsPreviewSafeEmitCandidate` + owner/pixel/slot validation + per-export budget 64; buildings force-export only when `IsExportSafeObjectPtr`.
+
 ## E.2.53 (preview skirmish layer visibility)
 
 - **Symptom:** Soak `f7058a36-7de9` — long stable session but spotty invisibility (war-factory MCVs, some defenses/APWR/silos/Tesla); no `LIVE_SKIRMISH_*` (preview export path).
