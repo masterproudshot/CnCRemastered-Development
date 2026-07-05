@@ -37,6 +37,18 @@ Options:
                         so that the simple .bat launchers keep working afterward.
   -h, -?                Show this help.
 
+Environment (set automatically unless noted):
+  AELORIA_QUIET         Non-debug perf throttle (E.2.50). Launcher sets **1** for normal play (no -D)
+                        unless you already exported AELORIA_QUIET. Rate-limits CONSTRUCTION_SEED,
+                        PRODUCED_UNIT_FIRST_DRAW, BUILDING_STAB_REFRESH, HARVESTER_* critical families.
+                        Use -DebugMode (-D) for full guard trail; export AELORIA_QUIET=0 to disable quiet.
+  AELORIA_ENABLE_VERBOSE_DRAW_LOGS
+                        Set to 1 with -DebugMode; 0 for normal soak (P4).
+
+WER / crash capture:
+  After game exit the launcher waits **3s** before the first WER/Steam crash scrape (reports often
+  land seconds after process exit), then polls again after 8s if nothing found.
+
 Profiles:
   Experimental        - Latest changes, may be unstable. Use for active development.
   Stable              - Recommended for normal play. Good balance of features and stability.

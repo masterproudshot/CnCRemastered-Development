@@ -181,24 +181,80 @@ try {
 
 $crashZip = $null
 $crashWerCaptured = $false
+$werSnippet = $null
+$launcherExitClean = $null
 if ($LauncherLog -and (Test-Path -LiteralPath $LauncherLog)) {
     $crashMatch = Select-String -Path $LauncherLog -Pattern 'Crash report:' -SimpleMatch -ErrorAction SilentlyContinue | Select-Object -Last 1
     if ($crashMatch -and $crashMatch.Line -match 'Crash report:\s*(.+\.zip)') {
         $crashZip = $Matches[1].Trim()
     }
     $werMatch = Select-String -Path $LauncherLog -Pattern 'Captured WER crash report|Crash_WER_' -ErrorAction SilentlyContinue | Select-Object -First 1
-    if ($werMatch) { $crashWerCaptured = $true }
+    if ($werMatch) {
+        $crashWerCaptured = $true
+        if ($werMatch.Line -match 'Captured WER crash report from this session:\s*(.+?)\s*\(source:\s*(.+?)\)') {
+            $werSnippet = "WER archive=$($Matches[1].Trim()) source=$($Matches[2].Trim())"
+        } elseif ($werMatch.Line -match '(Crash_WER_[^\s]+)') {
+            $werSnippet = "WER path=$($Matches[1].Trim())"
+        } else {
+            $werSnippet = ($werMatch.Line -replace '^\[[^\]]+\]\s*\[[^\]]+\]\s*', '').Trim()
+        }
+    }
+    $exitMatch = Select-String -Path $LauncherLog -Pattern 'Game processes have exited' -SimpleMatch -ErrorAction SilentlyContinue | Select-Object -Last 1
+    $finalStateMatch = Select-String -Path $LauncherLog -Pattern 'FINAL STATE:\s*(\w+)' -ErrorAction SilentlyContinue | Select-Object -Last 1
+    if ($exitMatch -and $finalStateMatch -and $finalStateMatch.Matches[0].Groups[1].Value -eq 'Completed') {
+        $launcherExitClean = $true
+    } elseif ($exitMatch) {
+        $launcherExitClean = $true
+    }
 }
 
 # no_crash_zip: no Steam zip, no WER archive, and AV must correlate with a zip when present (5z-n9 PR6).
 $noCrashZipPass = (-not $crashZip) -and (-not $crashWerCaptured)
 if ($windowsAv -and -not $crashZip) { $noCrashZipPass = $false }
 
-# Missing AELORIA_SESSION_END is normal when quitting from the game UI (DLL Shutdown often not called).
+# Quit vs crash: missing AELORIA_SESSION_END is normal when quitting from the game UI (DLL Shutdown often not called).
+$sessionEndKind = 'INCONCLUSIVE'
+if ($windowsAv -or $crashZip -or $crashWerCaptured) {
+    $sessionEndKind = 'LIKELY_CRASH'
+} elseif ($sessionShutdownSeen) {
+    $sessionEndKind = 'GRACEFUL_SHUTDOWN'
+} elseif (-not $abruptTail -and $maxFrame -ge 7500 -and $noCrashZipPass -and -not $windowsAv) {
+    $sessionEndKind = 'GRACEFUL_QUIT'
+} elseif ($abruptTail) {
+    $sessionEndKind = 'LIKELY_CRASH'
+}
 if ($abruptTail -and -not $sessionShutdownSeen -and $maxFrame -ge 7500 -and $noCrashZipPass -and -not $windowsAv) {
     if ($buildingTailMarkers.Count -eq 0 -and $crashTailMarkers.Count -eq 0 -and $trackingClearedTail.Count -lt 3) {
         $abruptTail = $false
+        if ($sessionEndKind -eq 'LIKELY_CRASH') { $sessionEndKind = 'GRACEFUL_QUIT' }
     }
+}
+if ($launcherExitClean -and $sessionEndKind -eq 'INCONCLUSIVE' -and -not $abruptTail) {
+    $sessionEndKind = 'GRACEFUL_QUIT'
+}
+
+# LAYERS summary (E.2.49 instrumentation — all profiles for soak hygiene)
+$layersMaxCount = 0
+$layersNearCapSites = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+$layersCapDropTotal = 0
+foreach ($line in $content) {
+    if ($line -match 'LAYERS_NEAR_CAP count=(\d+)') {
+        $c = [int]$Matches[1]
+        if ($c -gt $layersMaxCount) { $layersMaxCount = $c }
+        if ($line -match 'site=(\S+)') { [void]$layersNearCapSites.Add($Matches[1]) }
+    }
+    if ($line -match 'LAYERS_CAP_DROP.*dropped=(\d+)') {
+        $layersCapDropTotal += [int]$Matches[1]
+    }
+}
+
+# Perf hint: log lines per logic frame (high ratio => verbose/throttle regression)
+$linesPerFrame = if ($maxFrame -gt 0) { [math]::Round($lineCount / $maxFrame, 2) } else { 0 }
+$perfLinesWarn = $false
+if ($Profile -eq 'P4' -or $Profile -eq 'NS') {
+    if ($linesPerFrame -gt 3.0) { $perfLinesWarn = $true }
+} elseif ($Profile -eq 'P1') {
+    if ($linesPerFrame -gt 30.0) { $perfLinesWarn = $true }
 }
 
 # E.2.45 lifecycle gates
@@ -291,19 +347,30 @@ $pass = ($failed.Count -eq 0)
 
 Write-Host "=== AELORIA SOAK ANALYSIS ($Profile) ===" -ForegroundColor Cyan
 Write-Host "Log: $DebugLog"
-Write-Host "Lines: $lineCount | MaxFrame: $maxFrame"
+Write-Host "Lines: $lineCount | MaxFrame: $maxFrame | Lines/frame: $linesPerFrame"
+if ($perfLinesWarn) {
+    Write-Host "WARN: lines/frame $linesPerFrame high for $Profile (check AELORIA_QUIET / verbose draw)" -ForegroundColor Yellow
+}
 if ($Profile -eq 'P1' -and $lineCount -gt 200000) {
     Write-Host "WARN: P1 log line count $lineCount exceeds 200000 (possible log throttle regression)" -ForegroundColor Yellow
 }
+$sessionEndColor = switch ($sessionEndKind) {
+    'GRACEFUL_QUIT' { 'Green' }
+    'GRACEFUL_SHUTDOWN' { 'Green' }
+    'LIKELY_CRASH' { 'Red' }
+    default { 'Yellow' }
+}
+Write-Host "Session end: $sessionEndKind (abruptTail=$abruptTail)" -ForegroundColor $sessionEndColor
 Write-Host "Tank unlimbos: $($tankUnlimbos.Count) | Jeep: $($jeepUnlimbos.Count) | Any produced: $($anyProducedUnlimbo.Count)"
 Write-Host "Harvester relocate last frame: $lastHarvesterRelocateFrame | Bulk stomp: $($bulkStomp.Count) | Bulk idx gap: $bulkIdxGap | Foot sustain spam: $footSustainSpam"
-if ($Profile -eq 'P4' -or $Profile -eq 'NS') {
-    Write-Host "LAYERS near cap: $($layersNearCap.Count) | LAYERS cap drop: $($layersCapDrop.Count)"
-}
+Write-Host "LAYERS: near-cap events=$($layersNearCap.Count) cap-drop events=$($layersCapDrop.Count) maxCount=$layersMaxCount sites=$($layersNearCapSites.Count) droppedTotal=$layersCapDropTotal"
 if ($null -ne $wallClockMinutes) { Write-Host "Wall clock (visible->exit): $([math]::Round($wallClockMinutes, 1)) min" }
 Write-Host "Produced first draw VIRTUAL/MAIN: $($producedFirstDrawVirtual.Count)/$($producedFirstDrawMain.Count)"
 if ($crashZip) { Write-Host "Crash zip: $crashZip" -ForegroundColor Yellow }
-if ($crashWerCaptured) { Write-Host "WER crash archive captured (launcher log)" -ForegroundColor Yellow }
+if ($crashWerCaptured) {
+    Write-Host "WER crash archive captured (launcher log)" -ForegroundColor Yellow
+    if ($werSnippet) { Write-Host "WER snippet: $werSnippet" -ForegroundColor Yellow }
+}
 if ($windowsAv) { Write-Host "Windows AV: $windowsAv" -ForegroundColor Yellow }
 
 foreach ($kv in $gates.GetEnumerator()) {

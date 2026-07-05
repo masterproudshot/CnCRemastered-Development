@@ -53,6 +53,21 @@
 - Test using the verification notes as a checklist.
 - Confirm the mod name appears and features behave as expected.
 
+#### Soak ladder (north-star profiles)
+
+Run sessions with `Launch-Aeloria.ps1`; pass `-LauncherLog` to the analyzer when correlating WER/quit vs crash.
+
+| Step | Profile | Launcher | Analyzer | Gate |
+|------|---------|----------|----------|------|
+| P1 debug | P1 | `-Profile Experimental -DebugMode -NC` | `-Profile P1 -LauncherLog <launcher.log>` | max_frame ≥ 7500, no abrupt tail, no WER/AV |
+| P4 perf | P4 | `-Profile Experimental -NC` (no `-D`; `AELORIA_QUIET=1` default) | `-Profile P4 -LauncherLog <launcher.log>` | max_frame ≥ 7500, lines/frame ≤ ~3, LAYERS summary clean |
+| P3 long | P3 | `-Profile Experimental -DebugMode -NC` (20+ min) | `-Profile P3` | max_frame ≥ 27000, tank unlimbos ≥ 2 |
+| NS north star | NS | `-Profile Experimental -NC` (20–30 min wall clock) | `-Profile NS -LauncherLog <launcher.log>` | max_frame ≥ 40000, wall clock ≥ 20 min |
+
+**User gates (wave checklist — `Docs/AELORIA-STATUS-WAVES.md`):**
+- **G-W7a:** After WAVE-5 — 5+ min post-Start skirmish (Fix-M1); P4 or P1 analyzer PASS with `Session end: GRACEFUL_QUIT` (not `LIKELY_CRASH`).
+- **G-W7b:** After WAVE-6 — 20–30 min `Launch-Aeloria.ps1 -Profile Experimental -NC`, then `Analyze-AeloriaSoak.ps1 -Profile P4 -LauncherLog Logs\Launch-Aeloria_<session>.log`; all gates green, no WER snippet.
+
 ### Phase 7: Commit & Record
 - Commit changes **inside the submodule first**.
 - Then commit the parent repo (including updated submodule pointer and docs).
