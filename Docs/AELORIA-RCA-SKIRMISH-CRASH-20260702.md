@@ -37,7 +37,7 @@ From `Docs/AELORIA-STATUS-20260620.md` and `Scripts/Analyze-AeloriaSoak.ps1`:
 
 **E.2.47–E.2.48 (experimental):** preview building bad+8 placeholder; preview starting-unit legacy MAIN block after creation prune + unhealthy Class belt.
 
-**E.2.51 (planned):** late-game AV at `DLL+0x000b7fdf` — tracking/LAYERS/construction hot path under long-session scale.
+**E.2.51 (in tree):** late-game AV at `DLL+0x000b7fdf` — symbolized to **`TechnoClass::Techno_Draw_Object`** (`TECHNO.obj`, RVA `+0x2f` from `0001:000b7fb0` per `bin/Win32/RedAlert.map`). Trigger: `Get_Layer_State` layer walk → `Draw_It` → MAIN blitter on pool-reused techno with stale `Class`/`+8` after `TRACKING_PRUNE` at scale (~frame 58659, session `1c4c2d18-c1be`). **Fix:** budgeted `LATE_GAME_AV_GUARD` + `Aeloria_GuardExportObjectPtr` on bulk/sustain/factory/export slots; `Aeloria_TechnoClassRawIsHealthy` gate before `Draw_It`; strengthened 512-cap logging.
 
 North star: **0 / 7** recent sessions pass P4.
 
@@ -75,6 +75,14 @@ E.2.41 **removed frame-1 arm** and tied live arm to **`CNC_Start_Mission_Timer`*
 
 - `LIVE_SKIRMISH_ARMED via Advance_glyphx_skirmish_sim frame=1`.
 - **Cause:** Treating lobby as live match; violates lifecycle model (fixed in E.2.41).
+
+### Failure mode D — late game ~58k frames (`1c4c2d18-c1be`, E.2.51)
+
+- Non-debug soak ~34 min; log ends without `SESSION_END` at frame **58659**.
+- WER: `REDALERT.DLL` `c0000005` fault offset **`000b7fdf`**.
+- **Symbol (Release x86 map):** `TechnoClass::Techno_Draw_Object` — `0001:000b7fb0` + `0x2f` → `0001:000b7fdf` (`TECHNO.obj`).
+- **Cause:** `Aeloria_PruneStaleTracking` / aggressive cap prune drops stab/creation rows while `Map.Layer` still walks active technos; `Get_Layer_State` calls `Draw_It` → `Techno_Draw_Object` on pool-reused object with corrupt `Class`/`+8`. Bulk/sustain/factory export slots can retain stale `CNCInternalObjectPointer` values under the same race.
+- **Fix (E.2.51):** `LATE_GAME_AV_GUARD` (budget 32, critical log); `Aeloria_GuardExportObjectPtr` on intercept/bulk/sustain/factory/shadow paths; `Aeloria_TechnoClassRawIsHealthy` before `Draw_It`; 512-cap bounds logging at intercept (~6019) and layer walk (~7558).
 
 ---
 
