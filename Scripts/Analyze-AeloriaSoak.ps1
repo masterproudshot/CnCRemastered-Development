@@ -238,6 +238,7 @@ $layersMaxCount = 0
 $layersNearCapSites = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
 $layersCapDropTotal = 0
 $layersTrimBandLines = @($content | Where-Object { $_ -match 'LAYERS_TRIM_BAND' })
+$layersSlotReplaceLines = @($content | Where-Object { $_ -match 'LAYERS_SLOT_REPLACE' })
 $layersTotalClampBlind = @($content | Where-Object { $_ -match 'LAYERS_CAP_DROP.*site=total_clamp\b' })
 $layersTotalClampFair = @($content | Where-Object { $_ -match 'LAYERS_CAP_DROP.*site=total_clamp_fair' })
 $layersWalkSkipLate = 0
@@ -373,7 +374,7 @@ Write-Host "Session end: $sessionEndKind (abruptTail=$abruptTail)" -ForegroundCo
 Write-Host "Tank unlimbos: $($tankUnlimbos.Count) | Jeep: $($jeepUnlimbos.Count) | Any produced: $($anyProducedUnlimbo.Count)"
 Write-Host "Harvester relocate last frame: $lastHarvesterRelocateFrame | Bulk stomp: $($bulkStomp.Count) | Bulk idx gap: $bulkIdxGap | Foot sustain spam: $footSustainSpam"
 Write-Host "LAYERS: near-cap events=$($layersNearCap.Count) cap-drop events=$($layersCapDrop.Count) maxCount=$layersMaxCount sites=$($layersNearCapSites.Count) droppedTotal=$layersCapDropTotal"
-Write-Host "LAYERS E.2.59: trim_band=$($layersTrimBandLines.Count) total_clamp_fair=$($layersTotalClampFair.Count) blind_clamp=$($layersTotalClampBlind.Count) walk_skip_late=$layersWalkSkipLate"
+Write-Host "LAYERS E.2.59: trim_band=$($layersTrimBandLines.Count) slot_replace=$($layersSlotReplaceLines.Count) total_clamp_fair=$($layersTotalClampFair.Count) blind_clamp=$($layersTotalClampBlind.Count) walk_skip_late=$layersWalkSkipLate"
 if ($layersClampWithoutNearCap) {
     Write-Host "WARN: total_clamp without prior LAYERS_NEAR_CAP (unexpected cap pressure)" -ForegroundColor Yellow
 }

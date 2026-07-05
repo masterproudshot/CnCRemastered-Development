@@ -34,6 +34,7 @@ From `Docs/AELORIA-STATUS-20260620.md` and `Scripts/Analyze-AeloriaSoak.ps1`:
 | `885446a6-f040` | 4135 | E.2.45 | Preview `DEAD_TRACKING_PRUNED creation=11` @0; MCV `Unit guard passed` @3159 (PREVIEW, no live arm) |
 | `3f9170a1-e136` | 283 | E.2.46 smoke | M0 lifecycle gates PASS; tail `CC_Draw_Shape` RTTI=5 `at+8=0xffffff00` (family B) |
 | `1c4c2d18-c1be` | 58659 | E.2.47–48, non-debug soak ~34 min | WER `REDALERT.DLL` `c0000005` offset **`000b7fdf`**; log ends without `SESSION_END` (family D — late game) |
+| `f6af36ce-05b0` | 61214 | E.2.59 soak ~35 min debug | WER `InstanceServerG`; **6.4M** log lines, **1.1M** `LAYERS_NEAR_CAP` pinned @512; abrupt tail (family F) |
 
 **E.2.47–E.2.48 (experimental):** preview building bad+8 placeholder; preview starting-unit legacy MAIN block after creation prune + unhealthy Class belt.
 
@@ -85,6 +86,16 @@ E.2.41 **removed frame-1 arm** and tied live arm to **`CNC_Start_Mission_Timer`*
 - **Cause (hypothesis):** `Get_Layer_State` fills ≤512 `CNCObjectStruct` slots; `Aeloria_TrimDrawCountPreferRetain`, blind `total_clamp`, and `layer_walk_skip` at cap drop **late layer-walk / southern-band** objects from the client list while sim + terrain paths continue.
 - **Fix (E.2.59):** `Aeloria_LayersSlotRetainPriorityV2`, Y-third quota trim when `count ≥ 480`, `Aeloria_ClampLayersListFair` (`total_clamp_fair`), soft `layer_walk_skip` for underrepresented bands; `LAYERS_TRIM_BAND` diagnostics.
 - **Forensics:** soak log `d693a684-49e9` not located under `Logs/` at plan time — correlate `LAYERS_CAP_DROP` / `total_clamp` on next repro.
+
+### Failure mode F — late soak log flood + cap stall (`f6af36ce-05b0`, E.2.59 → E.2.61+59b)
+
+- Debug soak ~35 min wall; log ends abruptly at frame **61214** without `SESSION_END`.
+- WER: `InstanceServerG.exe` crash archive captured; no `REDALERT.DLL` offset in analyzer gate.
+- **6,397,303** log lines (**104.5** lines/frame); **1,116,141** `LAYERS_NEAR_CAP` events with `maxCount=512` pinned; **404,587** `LAYERS_CAP_DROP` (mostly `layer_walk_skip` / `intercept_guard`); **zero** `LAYERS_SLOT_REPLACE`.
+- Tail @61214: ramp `intercept_inc` 502→512 then burst cap drops — list full, no slot recycling for underrepresented bands.
+- **Cause:** E.2.59 fair trim reduced blind `total_clamp` but did not **replace** slots at cap; per-step `LAYERS_NEAR_CAP` logging at 512 saturated debug I/O; unsafe ptrs could still populate draw tail before `Draw_It`.
+- **Fix (E.2.61):** pin-at-512 log throttle (≤1/600 frames unless count changes); cap-drop budget 2/frame; `Aeloria_LayersFailClosedEnabled` strips unsafe draw slots + `fail_closed_pre_draw` on walk.
+- **Fix (E.2.59b):** `Aeloria_TryReplaceLayersSlotAtCap` + reshuffle; `LAYERS_SLOT_REPLACE` diagnostics; rollback env `AELORIA_LAYERS_SLOT_REPLACE=0`.
 
 ### Failure mode D — late game ~58k frames (`1c4c2d18-c1be`, E.2.51)
 

@@ -177,6 +177,21 @@ Soak `d8ee4506-c453` (74 min PASS); log `Logs/Aeloria-Debug_20260627_165256_d8ee
 - **Fix:** `Aeloria_LayersSlotRetainPriorityV2` (human technos); Y-third quota in `Aeloria_TrimDrawCountPreferRetain` when `≥480`; `Aeloria_ClampLayersListFair` (`total_clamp_fair`); soft `layer_walk_skip` via band histogram; `LAYERS_TRIM_BAND` logs; rollback `AELORIA_LAYERS_FAIR_TRIM=0`. Analyzer trim/clamp summary.
 - **Acceptance:** V2 20+ min bottom-third visibility; P4 `max_frame≥7500`; no E.2.56+58 regression.
 
+
+## E.2.59b (LAYERS slot replace at 512 cap)
+
+- **Symptom:** Post-E.2.59 soak `f6af36ce-05b0` - ~35 min @ frame **61214**; list pinned at **512** with heavy `layer_walk_skip` / `intercept_guard` drops; no `LAYERS_SLOT_REPLACE` (pre-fix build).
+- **Cause:** At cap, new exports only **drop** candidates; underrepresented Y-thirds never gain slots once list is full; southern-band technos stay invisible.
+- **Fix:** `Aeloria_TryReplaceLayersSlotAtCap` - evict lowest-priority slot from overrepresented Y-third, populate incoming techno; `Aeloria_ReshuffleLayersListAtCap` when fair-trim enabled; `LAYERS_SLOT_REPLACE` log (once/frame); rollback `AELORIA_LAYERS_SLOT_REPLACE=0`.
+- **Acceptance:** P4 soak shows `LAYERS_SLOT_REPLACE` under cap pressure; bottom-third technos visible @ 15+ min; no frame-0 regression.
+
+## E.2.61 (LAYERS cap log throttle + fail-closed export)
+
+- **Symptom:** Soak `f6af36ce-05b0` - **6.4M** log lines (**104** lines/frame); **1.1M** `LAYERS_NEAR_CAP` events while count pinned at 512; WER `InstanceServerG` @ frame **61214**.
+- **Cause:** `Aeloria_MaybeLogLayersNearCap` logged every `intercept_inc` step to 512; unbounded `LAYERS_CAP_DROP` at near-cap; unsafe ptrs could still reach `Draw_It` draw slots.
+- **Fix:** Pin-at-512 throttle - log `LAYERS_NEAR_CAP` at most **once per 600 frames** unless count changes; cap-drop budget **2/frame** at near-cap; `Aeloria_LayersFailClosedEnabled` (default on) strips unsafe draw slots + `fail_closed_pre_draw` skip on layer walk; rollback `AELORIA_LAYERS_FAIL_CLOSED=0`.
+- **Acceptance:** P4 lines/frame well below 104 under cap; `LAYERS_SLOT_REPLACE` + fair trim metrics; no abrupt tail @ 60k+ frames.
+
 ## E.2.58 (preview map-building bulk populate)
 
 - **Symptom:** Soak `d1ad852b-9e95` / `8e4148ec-a426` — stable, no crash; **buildings and human MCVs still invisible**; AI deploys; preview path without `LIVE_SKIRMISH_ARMED`.
