@@ -1,7 +1,7 @@
 # Aeloria compact handoff (`/compact`)
 
 **Branch:** `experimental`  
-**Parent:** see `git log -1` · **DLL submodule:** `improvements` @ **E.2.65** (`7047646`)
+**Parent:** see `git log -1` · **DLL submodule:** `improvements` @ **E.2.66** (perf: reshuffle cadence)
 
 ## North star
 
@@ -21,7 +21,7 @@ Uniform cap: `Aeloria_LayersUniformCompactSlots`, tail LRU evict, no `y_third`. 
 
 ## Next
 
-**P0 perf** — `Docs/AELORIA-NEXT-ROUNDS.md` (reshuffle cadence, sustain scan, log throttle).
+**Soak E.2.66** — confirm faster feel + G1/G4 (`Docs/AELORIA-NEXT-ROUNDS.md`).
 
 ```powershell
 .\Scripts\Launch-Aeloria.ps1 -Profile Experimental -BuildFirst -AutoDeployDll -NC

@@ -10,17 +10,16 @@
 | G1 full-map visibility (user) | Soak `c35496c3-7951` — **no issues**, ~30 min wall |
 | G4 clean exit | Same soak, no WER zip |
 
-## P0 next — performance (user: “rather slow”)
+## P0 — performance (E.2.66 landed — soak to confirm)
 
-Investigate **before** new gameplay features:
+Implemented: reshuffle cadence, ramp NEAR_CAP throttle, sustain pending cache.
 
-1. **E.2.66 reshuffle cadence** — `Aeloria_ReshuffleLayersListAtCap` on every export when `count ≥ 480`; gate to `count==512` or every N frames (QE Issue 4).
-2. **Cap-pressure hot paths** — `TryReplace` + `Draw_It` replace at 512; profile replace count vs `1f5f201c` (26k events).
-3. **Sustain / foot passes** — full scan of `g_AeloriaObjectStability` per `Get_Layer_State`; budget or early-out when `sustainRetired` dominant.
-4. **Debug log I/O** — `-NC` uses `AELORIA_QUIET=1`; confirm lines/frame vs `f6af36ce`; extend E.2.61 throttle to 480→512 ramp if needed.
-5. **Analyzer baseline** — `Analyze-AeloriaSoak.ps1` on `Aeloria-Debug_*_c35496c3-7951.log` for `max_frame`, replace rate, cap-onset frame.
+**Next measure:**
 
-**Pass bar:** Subjectively “fast as `d693a684`” or within ~10% wall clock for 15 min skirmish; no G1/G4 regression.
+1. Soak vs `c35496c3-7951` — subjective speed + G1/G4.
+2. If still slow: profile replace volume, foot sustain, `Reshuffle` @ 512 every export.
+
+**Rollback:** `AELORIA_LAYERS_RESHUFFLE_CADENCE=0`
 
 ## P1 — hardening (small PRs)
 

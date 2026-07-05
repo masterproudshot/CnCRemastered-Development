@@ -32,11 +32,15 @@ No `y_third`, no `LAYERS_TRIM_BAND`, no histogram skip at cap.
 - G4: no WER @ 30+ min.
 - Logs: `LAYERS_SLOT_REPLACE idx=…` / `mode=draw_it`; `total_clamp_uniform` if overflow trim.
 
+## Perf follow-up
+
+**E.2.66** — `Docs/AELORIA-PHASE-E22-PLAN.md` (reshuffle cadence, log ramp, sustain skip).
+
 ## Soak
 
 | ID | Result |
 |----|--------|
-| `c35496c3-7951` | User: no visibility/crash issues ~30 min; **wall clock felt slow** |
+| `c35496c3-7951` | User: no visibility/crash issues ~30 min; **wall clock felt slow** → E.2.66 |
 
 ## Verify
 

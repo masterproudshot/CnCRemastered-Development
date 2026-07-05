@@ -170,6 +170,13 @@ Soak `d8ee4506-c453` (74 min PASS); log `Logs/Aeloria-Debug_20260627_165256_d8ee
 
 <!-- E.2.52 (Start transition hardening) skipped — no repro after E.2.49–51; conditional per unified plan PR 4. -->
 
+## E.2.66 (LAYERS cap performance)
+
+- **Symptom:** Soak `c35496c3-7951` — G1/G4 pass; user reports **slow** wall clock.
+- **Cause:** Per-export reshuffle @ 480–512; sustain full-map scan; `LAYERS_NEAR_CAP` ramp log storm.
+- **Fix:** Reshuffle cadence (`AELORIA_LAYERS_RESHUFFLE_CADENCE`, default 15; always @ 512); one NEAR_CAP log/frame on ramp; `AnySustainReinsertPending` cache skip.
+- **Acceptance:** Snappier 15+ min soak; no G1/G4 regression.
+
 ## E.2.65 (uniform LAYERS cap — no map geography)
 
 - **Symptom:** E.2.59–61b reduced south blanking but relied on **Y-third quotas / replace-by-band** — wrong model; map must be uniform.
