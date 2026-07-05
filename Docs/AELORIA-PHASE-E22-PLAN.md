@@ -170,6 +170,12 @@ Soak `d8ee4506-c453` (74 min PASS); log `Logs/Aeloria-Debug_20260627_165256_d8ee
 
 <!-- E.2.52 (Start transition hardening) skipped — no repro after E.2.49–51; conditional per unified plan PR 4. -->
 
+## E.2.65 (uniform LAYERS cap — no map geography)
+
+- **Symptom:** E.2.59–61b reduced south blanking but relied on **Y-third quotas / replace-by-band** — wrong model; map must be uniform.
+- **Fix:** `Aeloria_LayersUniformCompactSlots`; evict **last non-retained** slot at cap; remove `y_third` trim/skip/reshuffle; infantry `InfantryLayersExportReady` + foot replace @ cap.
+- **Acceptance:** G1 full-map @ 15+ min without regional hacks; simpler logs (`LAYERS_SLOT_REPLACE idx=`, `total_clamp_uniform`).
+
 ## E.2.59 (late-game regional object invisibility)
 
 - **Symptom:** Soak `d693a684-49e9` — stable long `-NC` session; ~10–15 min **bottom third** loses buildings/units; ground + resources remain.

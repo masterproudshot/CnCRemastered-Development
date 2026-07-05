@@ -17,7 +17,7 @@
 | 6 | PR 6 B4, PR 7 A5 | done | map integration + promote docs |
 | 7 | E.2.56+58 populate | done | soak `d693a684` launch visibility OK |
 | 8 | User soak (stability/perf) | done | long `-NC`, no crash, good speed |
-| 9 | E.2.59+59b+61 regional LAYERS | **in progress** — soak pending | bottom-⅓ technos visible @ 15+ min; cap log throttle + slot replace @ 512 |
+| 9 | E.2.65 uniform LAYERS cap | **implemented** — soak pending | removed Y-third policy; uniform replace/trim; infantry LAYERS graduate |
 
 ## User gates
 

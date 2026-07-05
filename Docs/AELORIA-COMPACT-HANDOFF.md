@@ -7,12 +7,15 @@
 
 4p+ Experimental skirmish: menus OK, units **visible / selectable / orderable** (human + AI), **20–30+ min** (`max_frame ≥ 7500`), full-zoom mods, **no WER crash**. No frame-1 `LIVE_SKIRMISH_ARMED`. **512 client cap** unchanged.
 
-## Last soak (pre-61b)
+## Last soaks
 
 | ID | Result |
 |----|--------|
-| `f6af36ce-05b0` | **G1 FAIL** — south third blank ~frame **16459** (cap pinned 512); **crash ~61214** (family D); log storm `LAYERS_NEAR_CAP` / `LAYERS_CAP_DROP` |
+| `1f5f201c-7d98` | **G1 partial** — ~bottom **10%** blank; **no crash** ~**53k** frames; **26k+** `LAYERS_SLOT_REPLACE` (61b) |
+| `f6af36ce-05b0` | **G1 FAIL** — south third blank ~frame **16459**; **crash ~61214**; zero replace |
 | `d693a684-49e9` | Stable long run, south blank (anchor pre-59) |
+
+**Next plan:** `Docs/AELORIA-PLAN-E262-SOUTH-REMAINDER.md`
 
 ## E.2.61b (landed)
 
