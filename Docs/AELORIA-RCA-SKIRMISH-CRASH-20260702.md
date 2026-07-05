@@ -39,6 +39,8 @@ From `Docs/AELORIA-STATUS-20260620.md` and `Scripts/Analyze-AeloriaSoak.ps1`:
 
 **E.2.51 (in tree):** late-game AV at `DLL+0x000b7fdf` — symbolized to **`TechnoClass::Techno_Draw_Object`** (`TECHNO.obj`, RVA `+0x2f` from `0001:000b7fb0` per `bin/Win32/RedAlert.map`). Trigger: `Get_Layer_State` layer walk → `Draw_It` → MAIN blitter on pool-reused techno with stale `Class`/`+8` after `TRACKING_PRUNE` at scale (~frame 58659, session `1c4c2d18-c1be`). **Fix:** budgeted `LATE_GAME_AV_GUARD` + `Aeloria_GuardExportObjectPtr` on bulk/sustain/factory/export slots; `Aeloria_TechnoClassRawIsHealthy` gate before `Draw_It`; strengthened 512-cap logging.
 
+**E.2.52 (skipped — conditional PR 4):** No Start-transition repro after E.2.47–E.2.51 soak/evidence. Post-E.2.45–48 sessions did not reproduce failure mode A (`fa46d5de` @ frame **2426**); the blocking late crash was family D at ~**58k** frames (`1c4c2d18-c1be`), addressed by E.2.51. Start/@2426 hardening deferred — no DLL change unless a fresh Start-transition repro appears.
+
 North star: **0 / 7** recent sessions pass P4.
 
 ---
@@ -141,8 +143,24 @@ Scripts\Analyze-AeloriaSoak.ps1 -Profile P1 -DebugLog Logs\Aeloria-Debug_<newest
 
 ---
 
+## E.2.52 — Start transition hardening (skipped)
+
+**Status:** Skipped (conditional PR 4, 2026-07-04).
+
+| Check | Result |
+|-------|--------|
+| Repro after E.2.47–E.2.51? | **No** — no session tail at Start/@2426 |
+| Dominant late evidence? | **Yes** — `1c4c2d18-c1be` @ frame **58659** (family D) |
+| E.2.51 covers family D? | **Yes** — `LATE_GAME_AV_GUARD` + export guards + `TechnoClassRawIsHealthy` |
+| DLL change required? | **No** — no obvious gap without Start-transition repro |
+
+**Rationale:** PR 4 was conditional on a fresh Start-transition crash. Soak and post-E.2.45–48 evidence point at late-game AV (~58k), not lobby→Start @2426. Re-open E.2.52 only if a new log shows abrupt tail at Start with `PREVIEW_LAYER_EXPORT` storm and **no** `LIVE_SKIRMISH_ARMED`.
+
+---
+
 ## What we are not doing yet
 
 - Map generation (blocked per north star).
 - E.2.2 VFX soak promotion until G4 PASS returns.
 - Declaring victory on &lt;5 min or lobby-only logs.
+- E.2.52 Start hardening (skipped until repro).

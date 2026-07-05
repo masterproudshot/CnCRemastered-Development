@@ -40,11 +40,13 @@ See `Docs/AELORIA-STATUS-WAVES.md` for live wave checklist.
 - **Files/components affected:** `Source/Rampastring-MoreQoL/REDALERT/DLLInterface.cpp`, `Scripts/Analyze-AeloriaSoak.ps1`, `Docs/AELORIA-PHASE-E22-PLAN.md`
 - **Dependencies:** PR 2
 
-### PR 4: E.2.52 — Start transition hardening (conditional)
+### PR 4: E.2.52 — Start transition hardening (conditional) — **SKIPPED**
 
-- **Description:** Start/@2426 only if repro; else doc skip.
-- **Files/components affected:** `Source/Rampastring-MoreQoL/REDALERT/DLLInterface.cpp`, `Docs/AELORIA-RCA-SKIRMISH-CRASH-20260702.md`
+- **Status:** Skipped 2026-07-04 — no Start-transition repro after E.2.47–E.2.51; late crash was family D @ ~58k frames (`1c4c2d18-c1be`), addressed by E.2.51. No DLL change.
+- **Description:** Start/@2426 only if repro; else doc skip. **Gate not met** — documented skip in RCA + STATUS-WAVES.
+- **Files/components affected:** `Docs/AELORIA-RCA-SKIRMISH-CRASH-20260702.md`, `Docs/AELORIA-STATUS-WAVES.md` (docs only)
 - **Dependencies:** PR 3
+- **Re-open when:** New soak shows abrupt tail at Start (~2426) with preview intercept storm and no `LIVE_SKIRMISH_ARMED`.
 
 ### PR 5: C1–C3 — Analyzer, launcher, WER hygiene
 
