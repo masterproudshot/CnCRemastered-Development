@@ -1,0 +1,13 @@
+{
+  "name": "AIGen_Example",
+  "theater": "Temperate",
+  "terrainProfile": "flat",
+  "spawnLayout": "corners8",
+  "seed": 42,
+  "players": 4,
+  "mapSize": 64,
+  "oreDensity": 0.35,
+  "gemDensity": 0.03,
+  "mineCount": 10,
+  "briefing": "Procedural test map — clustered ore for maximum yield."
+}
