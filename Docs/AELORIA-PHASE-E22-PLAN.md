@@ -170,6 +170,18 @@ Soak `d8ee4506-c453` (74 min PASS); log `Logs/Aeloria-Debug_20260627_165256_d8ee
 
 <!-- E.2.52 (Start transition hardening) skipped — no repro after E.2.49–51; conditional per unified plan PR 4. -->
 
+## E.2.58 (preview map-building bulk populate)
+
+- **Symptom:** Soak `d1ad852b-9e95` / `8e4148ec-a426` — stable, no crash; **buildings and human MCVs still invisible**; AI deploys; preview path without `LIVE_SKIRMISH_ARMED`.
+- **Cause:** E.2.55 widened **layer walk** only; client LAYERS slots still gated by `Aeloria_GuardExportObjectPtr` at intercept/bulk/safe-emit (misaligned pool `this` fails 4-byte Class* plausibility). Map buildings rarely enter creation-frame bulk.
+- **Fix:** `Aeloria_PreviewBulkNeedsMapBuildings` + budgeted `PREVIEW_MAP_BULK_INSERT` in preview bulk pass; `Aeloria_IsPreviewLayerWalkObjectPtr` accepts creation-frame keys before retain; `BULK_POST_COUNT` quiet-whitelist for soak metrics.
+
+## E.2.56 (human layer populate predicate)
+
+- **Symptom:** Same as E.2.58 — walk/export mismatch; human `PLAYER_OBJECT_CREATED` objects blocked at `intercept_populate` / `bulk_hascreation` @ frame 0.
+- **Cause:** E.2.51 `Aeloria_GuardExportObjectPtr` on all populate sites; valid techno with repaired Class but misaligned `this` still fails export-safe.
+- **Fix:** `Aeloria_IsLayerPopulateObjectPtr` / `Aeloria_GuardLayerPopulateObjectPtr` — export-safe OR creation-frame OR preview retain OR preview map building OR healthy techno with valid owner; applied to intercept, bulk, sustain, foot, factory, preview safe emit. Layer walk still uses `Aeloria_TechnoClassRawIsHealthy` before `Draw_It` (E.2.51).
+
 ## E.2.55 (preview map building visibility)
 
 - **Symptom:** Soak `8e4148ec-a426` — stable ~4 min @ frame 3127, fast feel; user reports **missing buildings**; log shows repeated `LAYER_EXPORT_SKIP` `unsafe_layer_obj` @ frame 0 (not in creation tracking).
