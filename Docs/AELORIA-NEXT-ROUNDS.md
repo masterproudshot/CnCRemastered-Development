@@ -1,43 +1,39 @@
-# Aeloria — next rounds (post E.2.65)
+# Aeloria — next rounds
 
-**Branch:** `experimental` · **DLL:** `Source/Rampastring-MoreQoL` @ `improvements` (E.2.65 `7047646`)
+**Handoff:** `Docs/AELORIA-PROJECT-HANDOFF.md`
 
-## Closed this cycle
+**Branch:** `experimental` @ `edc270e` · **DLL:** `improvements` @ `66637ad`
 
-| Item | Evidence |
-|------|----------|
-| Uniform 512 LAYERS (no Y-third) | E.2.65 landed |
-| G1 full-map visibility (user) | Soak `c35496c3-7951` — **no issues**, ~30 min wall |
-| G4 clean exit | Same soak, no WER zip |
+## Closed
 
-## P0 — performance (E.2.66 landed — soak to confirm)
+- E.2.65 uniform 512 LAYERS  
+- E.2.66 reshuffle cadence, ramp log throttle, sustain cache  
+- Long-run stability anchor: `a0e5d651-bf48` (~67k f, no WER)
 
-Implemented: reshuffle cadence, ramp NEAR_CAP throttle, sustain pending cache.
+## P0 — visibility + perf under cap (`a0e5d651` learnings)
 
-**Next measure:**
+1. **E.2.67** — `LATE_GAME_AV_GUARD` log throttle in `-NC` (keep safety skips); cut ~2M-line tax.  
+2. **E.2.68** — Replace debounce / reduce churn (~24k `LAYERS_SLOT_REPLACE`); optional viewport-biased retain (no geography).  
+3. Soak compare: `a0e5d651` vs `c35496c3` — `linesPerFrame`, cap onset frame, replace count.
 
-1. Soak vs `c35496c3-7951` — subjective speed + G1/G4.
-2. If still slow: profile replace volume, foot sustain, `Reshuffle` @ 512 every export.
+**Pass:** 15–30 min playable; human + tactically relevant AI stay visible; subjectively faster 2nd half; no WER.
 
-**Rollback:** `AELORIA_LAYERS_RESHUFFLE_CADENCE=0`
+## P1 — hardening
 
-## P1 — hardening (small PRs)
-
-- `preview_safe_emit` replace @ cap (QE Issue 6).
-- `LAYERS_SLOT_REPLACE_FAIL reason=all_priority` when evict list empty (QE Issue 8).
-- Analyzer: drop `LAYERS_TRIM_BAND` gate; add uniform `total_clamp_uniform` + replace idx stats.
+- `preview_safe_emit` replace @ cap  
+- `LAYERS_SLOT_REPLACE_FAIL reason=all_priority`  
+- Analyzer: uniform clamp + replace stats (drop `LAYERS_TRIM_BAND`)
 
 ## P2 — backlog
 
-- E.2.60 MCV deploy/control (only if repro).
-- MapGen / `GeneratedMaps/` workflow (untracked local assets — not in git).
-- Consolidate accidental `Docs/archive/bugfixer-411/` reports (reference only).
+- E.2.60 MCV deploy (if repro)  
+- MapGen / `GeneratedMaps/` (local, gitignored)
 
 ## Commands
 
 ```powershell
 .\Scripts\Launch-Aeloria.ps1 -Profile Experimental -BuildFirst -AutoDeployDll -NC
-.\Scripts\Analyze-AeloriaSoak.ps1 -DebugLog Logs\Aeloria-Debug_*_c35496c3-7951.log -Profile P3
+.\Scripts\Analyze-AeloriaSoak.ps1 -DebugLog Logs\Aeloria-Debug_*_<session>.log -Profile NS
 ```
 
-**Rollback:** `AELORIA_LAYERS_SLOT_REPLACE=0`, `AELORIA_LAYERS_FAIR_TRIM=0`, `AELORIA_LAYERS_FAIL_CLOSED=0`
+**Rollback:** `AELORIA_LAYERS_RESHUFFLE_CADENCE=0`, `AELORIA_LAYERS_SLOT_REPLACE=0`
