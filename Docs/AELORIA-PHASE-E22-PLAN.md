@@ -170,6 +170,12 @@ Soak `d8ee4506-c453` (74 min PASS); log `Logs/Aeloria-Debug_20260627_165256_d8ee
 
 <!-- E.2.52 (Start transition hardening) skipped — no repro after E.2.49–51; conditional per unified plan PR 4. -->
 
+## E.2.53 (preview skirmish layer visibility)
+
+- **Symptom:** Soak `f7058a36-7de9` — long stable session but spotty invisibility (war-factory MCVs, some defenses/APWR/silos/Tesla); no `LIVE_SKIRMISH_*` (preview export path).
+- **Cause:** `Get_Layer_State` gated on `IsDown` without preview force-export; E.2.51 `techno_unhealthy_pre_draw` / `unsafe_layer_obj` skipped with no client slot; WEAP-tethered queue units skipped; factory `ProductionAssetName` merge failed silently; preview bulk skipped human-deployed buildings.
+- **Fix:** `Aeloria_ForcePreviewSkirmishLayerExport` + relaxed `Aeloria_IsPreviewLayerWalkObjectPtr`; `PREVIEW_SAFE_LAYER_EMIT` via `Aeloria_TryAppendPreviewSafeLayerSlot`; preview WEAP tether export; `Aeloria_FactoryProductionAssetFallback`; preview bulk pass + `LAYER_EXPORT_SKIP` diag budget separate from `LATE_GAME_AV_GUARD`.
+
 ## E.2.45 (preview tracking prune — 56d04f08)
 
 - **Symptom:** `DEAD_TRACKING_PRUNED creation=11` @ frame 0 on `Get_Layer_State_preview` → `Unit guard passed` @ frame 18.
