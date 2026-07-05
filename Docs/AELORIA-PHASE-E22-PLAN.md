@@ -170,6 +170,12 @@ Soak `d8ee4506-c453` (74 min PASS); log `Logs/Aeloria-Debug_20260627_165256_d8ee
 
 <!-- E.2.52 (Start transition hardening) skipped — no repro after E.2.49–51; conditional per unified plan PR 4. -->
 
+## E.2.55 (preview map building visibility)
+
+- **Symptom:** Soak `8e4148ec-a426` — stable ~4 min @ frame 3127, fast feel; user reports **missing buildings**; log shows repeated `LAYER_EXPORT_SKIP` `unsafe_layer_obj` @ frame 0 (not in creation tracking).
+- **Cause:** E.2.54 tightened preview walk to tracked units only; map-placed base buildings fail `IsExportSafeObjectPtr` / plausible Class* but are valid `RTTI_BUILDING` with sane `Owner()`.
+- **Fix:** `Aeloria_IsPreviewMapBuildingLayerPtr` — preview layer walk + `ForcePreviewSkirmishLayerExport` for active on-map buildings only (no all-techno reopen).
+
 ## E.2.54 (E.2.53 launch crash — preview safe emit flood)
 
 - **Symptom:** Soak `1a02369b-6831` — crash during skirmish launch @ frame **0** (~4 min wall); WER on `InstanceServer`; **221** `BULK_SLOT_STOMP_GUARD`; **350+** `PREVIEW_SAFE_LAYER_EMIT` with `owner=-1` `pos=(0,0)`.
