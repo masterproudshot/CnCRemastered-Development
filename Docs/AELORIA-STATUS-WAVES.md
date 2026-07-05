@@ -14,8 +14,8 @@
 | 3 | PR 3 E.2.49, PR 10 B2 | done | layers instrumentation |
 | 4 | PR 4 E.2.52* **skipped**, PR 11 B3 | done | *PR4 skipped; B3 landed |
 | 5 | PR 5 C1–C3 | done | analyzer / WER hygiene |
-| 6 | PR 6 B4, PR 7 A5 | pending | map integration |
-| 7 | User soak | pending | P4 ≥7500, no WER |
+| 6 | PR 6 B4, PR 7 A5 | done | map integration + promote docs |
+| 7 | User soak | USER soak pending | P4 ≥7500, no WER |
 
 ## User gates
 

@@ -43,23 +43,34 @@ Example: directory `...\Red_Alert\` and scenario `AIGen_Test` → `...\Red_Alert
 2. Save to `Local_Custom_Maps\Red_Alert\`.
 3. Skirmish → Custom → pick the map.
 
-### B. Generator CLI (automated)
+### B. Generator CLI (automated, B4 defaults)
 
-From repo (after building the map editor):
+From repo (after building the map editor). **B4 defaults:** `-Players 8`, `-MapSize 126`, `-Recipe octagon8`.
 
 ```powershell
-.\Scripts\Generate-RAMap.ps1 -Name "AIGen_Test" -Seed 42 -Players 4 -OreDensity 0.35
+# 126×8 Octagon-style (reference cells from catalog)
+.\Scripts\Generate-RAMap.ps1 -Recipe octagon8 -Name "AIGen_8p_Large02" -Seed 20260704 -Build
+
+# Middle Road layout
+.\Scripts\Generate-RAMap.ps1 -Recipe middle-road -Name "AIGen_MiddleRoad01" -Seed 99
+
+# Legacy 4p 64×64
+.\Scripts\Generate-RAMap.ps1 -Recipe corners8 -Name "AIGen_Test" -Seed 42 -Players 4 -Size 64
 ```
 
-Requires `-DataPath` to the game install if not default Steam path.
+Recipe aliases: `octagon8` → `octagonOpen`, `middle-road` → `middleRoad`, `corners8` → procedural spawns.
+
+Requires `-DataPath` to the game install if not default Steam path (`C:\Program Files (x86)\Steam\steamapps\common\CnCRemastered`).
+
+**Quality gate:** `.mpr` ≥ 10 000 bytes, `.tga` ≥ 4096 bytes, matching `.json`. `Generate-RAMap.ps1` and `Sync-LocalMap.ps1` both enforce this.
 
 ### C. Sync from repo folder
 
 ```powershell
-.\Scripts\Sync-LocalMap.ps1 -SourceDir ".\GeneratedMaps\AIGen_Test" -BaseName "AIGen_Test"
+.\Scripts\Sync-LocalMap.ps1 -SourceDir ".\GeneratedMaps" -BaseName "AIGen_8p_Large02"
 ```
 
-Copies `.mpr`, `.tga`, `.json` into `Local_Custom_Maps\Red_Alert\`.
+Verifies and copies the **triplet** (`.mpr`, `.tga`, `.json`) into `Local_Custom_Maps\Red_Alert\`.
 
 ## Workshop fallback
 

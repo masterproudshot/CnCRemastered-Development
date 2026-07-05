@@ -118,3 +118,44 @@ All changes in this baseline are **RedAlert-only**. TiberianDawn remains untouch
 ---
 
 **This is the first shippable Stable baseline for Project Aeloria.**
+
+---
+
+## Experimental → Stable promotion criteria (draft, A5 — 2026-07)
+
+The following gates apply to **Aeloria-Experimental** on branch `experimental` before the next Stable promotion (post E.2.49–51 unified wave). E.2.52 (Start/@2426 hardening) is **skipped** unless a fresh repro appears.
+
+### Runtime (Lane A)
+
+| Gate | Criterion |
+|------|-----------|
+| **Menu** | Browse custom maps / quit after skirmish — no `ClientG.exe` c0000005 |
+| **t=0** | Starting infantry + vehicles visible, selectable, orderable (human + AI) |
+| **Start** | Live match arms (`LIVE_SKIRMISH_ARMED` or pending timer apply); no abrupt tail @2426 without repro |
+| **Duration** | `max_frame ≥ 7500` (~20+ min) on custom skirmish; `Analyze-AeloriaSoak.ps1 -Profile P4` PASS |
+| **Late game** | No WER `REDALERT.DLL+0x000b7fdf` (E.2.51 guards); `LATE_GAME_AV_GUARD` budget not exhausted in normal play |
+| **LAYERS** | `LAYERS_CAP_DROP` = 0 or explained; `LAYERS_NEAR_CAP` rare and non-fatal |
+| **Perf** | Non-debug (`-NC`) session without debug-log slowdown; `AELORIA_QUIET=1` default acceptable |
+
+### Map tooling (Lane B — B4)
+
+| Gate | Criterion |
+|------|-----------|
+| **Generate** | `Generate-RAMap.ps1 -Recipe octagon8` produces 126×8 triplet with `.mpr` ≥ 10 KB |
+| **Sync** | `Sync-LocalMap.ps1` verifies triplet before install |
+| **Play** | Generated map (`AIGen_8p_Large02` or equivalent) loads in Skirmish → Custom |
+
+### Evidence required for promote
+
+1. Soak log + launcher log paths in `Logs/`
+2. `Analyze-AeloriaSoak.ps1` P4 summary (no abrupt tail, no preview mass prune, layers gates)
+3. Optional WER / crash report absence for session id
+4. Map triplet byte sizes recorded in commit or soak notes
+
+**Command ladder:**
+
+```powershell
+.\Scripts\Generate-RAMap.ps1 -Recipe octagon8 -Name AIGen_8p_Large02 -Seed 20260704 -Build
+.\Scripts\Launch-Aeloria.ps1 -Profile Experimental -NC
+.\Scripts\Analyze-AeloriaSoak.ps1 -Profile P4 -LauncherLog (Get-ChildItem Logs\Launch-Aeloria_*.log | Sort-Object LastWriteTime -Descending | Select-Object -First 1).FullName
+```

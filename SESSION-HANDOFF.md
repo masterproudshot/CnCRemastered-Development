@@ -97,4 +97,12 @@ Or `Launchers/Launch-Aeloria-Stable.bat` after deploy.
 
 ---
 
-*End of handoff. North star = visible units + stable full-game play on custom 4p Aeloria.*
+---
+
+## Unified waves (2026-07-04) — B4 + A5 landed
+
+**Orchestrator:** `Docs/AELORIA-NORTHSTAR-UNIFIED-PLAN.md` · **Checklist:** `Docs/AELORIA-STATUS-WAVES.md`
+
+Waves 0–3 done (E.2.50 perf quiet, E.2.51 late AV, E.2.49 LAYERS cap, MapGen B0–B3). **Wave 6 (PR 6 B4 + PR 7 A5)** integrates 126×8 map generation with promote-readiness docs: `Generate-RAMap.ps1 -Recipe octagon8|middle-road` (defaults `-Players 8`, `-MapSize 126`), triplet verify in `Sync-LocalMap.ps1`, sample **`AIGen_8p_Large02`**, E.2.49–51 entries in `AELORIA-PHASE-E22-PLAN.md` (E.2.52 skipped), Experimental→Stable criteria draft in release notes. **Next:** Wave 4–5 (conditional E.2.52, analyzer C1–C3) then user soak G-W7b (`max_frame ≥ 7500`, P4 PASS on Experimental custom 126×8 map).
+
+*End of handoff. North star = visible units + stable full-game play on custom 4p+ Aeloria with reference-quality 126×8 maps.*

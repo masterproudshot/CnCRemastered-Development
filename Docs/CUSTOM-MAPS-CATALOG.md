@@ -67,14 +67,33 @@ All surveyed favorites use **126×126**, **`[Multi1]`–`[Multi8]`**, **8 player
 
 B1 places **reference cells** for `octagonOpen` / `middleRoad` as placeholders; B3 refines layout fidelity and defaults for 126×8.
 
-## AI-generated 8-player maps
+## AI-generated 8-player maps (B4 integration)
 
-Script: `Scripts/Generate-RAMap.ps1` (`-Players 8`, max 8 per generator).  
-Batch: `Scripts/Generate-RAMap8p-Batch.ps1`.
+Script: `Scripts/Generate-RAMap.ps1` — **defaults `-Players 8`, `-MapSize 126`, `-Recipe octagon8`**.  
+Batch: `Scripts/Generate-RAMap8p-Batch.ps1` (64×64 set).  
+Sync: `Scripts/Sync-LocalMap.ps1` — verifies **`.mpr` + `.tga` + `.json`** triplet before copy.
 
-Spawn layout for procedural maps: eight positions (four corners + four edge midpoints) on the playable rect.
+### Recipe aliases (`-Recipe`)
 
-Generated set **`AIGen_8p_01` … `AIGen_8p_08`** (64×64) plus **`AIGen_8p_Large01`** (126×126, closer to Octagon / No-shortage scale).
+| Alias | CLI `--spawn-layout` | Reference |
+|-------|----------------------|-----------|
+| **octagon8** | `octagonOpen` | Octagon (Open) V1.4 cells |
+| **middle-road** | `middleRoad` | Middle Road 2-6p cells |
+| **corners8** | `corners8` | Procedural corner + edge midpoints |
+
+Example (126×8 Octagon-style):
+
+```powershell
+.\Scripts\Generate-RAMap.ps1 -Recipe octagon8 -Name AIGen_8p_Large02 -Seed 20260704 -Build
+.\Scripts\Sync-LocalMap.ps1 -SourceDir ".\GeneratedMaps" -BaseName "AIGen_8p_Large02"
+```
+
+### Quality gate (B4)
+
+Healthy generated maps: **`.mpr` ≥ 10 000 bytes**, **`.tga` ≥ 4096 bytes**, non-empty **`.json`** sidecar.  
+Truncated **4096-byte `.mpr`** files cannot be repaired — rerun `Generate-RAMap.ps1`.
+
+Generated set **`AIGen_8p_01` … `AIGen_8p_08`** (64×64) plus **`AIGen_8p_Large01`**, **`AIGen_8p_Large02`** (126×126 Octagon / No-shortage scale).
 
 ## Previews & ore (2026-07)
 

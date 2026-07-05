@@ -156,6 +156,20 @@ Soak `d8ee4506-c453` (74 min PASS); log `Logs/Aeloria-Debug_20260627_165256_d8ee
 - **Cause:** 512-cap guards in `DLL_Draw_Intercept`, layer-walk trim, foot sustain, bulk/sustain idx, and final `Count` clamp had no structured logging.
 - **Fix:** `LAYERS_NEAR_CAP` when count ≥ 480; `LAYERS_CAP_DROP` at each E.2.32 guard site (intercept guard/inc, layer-walk skip/trim, foot sustain, bulk/sustain idx, total clamp). Layer-walk trim prefers retaining tracked starting units and human-deployed buildings. `Analyze-AeloriaSoak.ps1` P4/NS summary counts `LAYERS_*` events.
 
+## E.2.50 (non-debug performance — quiet critical path)
+
+- **Symptom:** Normal (`-NC`) skirmish sessions felt sluggish in the first 1–2 minutes; debug logs showed high-volume `CONSTRUCTION_SEED`, `PRODUCED_UNIT_FIRST_DRAW`, `BUILDING_STAB_REFRESH`, and `HARVESTER_*` critical lines every frame.
+- **Cause:** Critical log families were not rate-limited when `AELORIA_ENABLE_VERBOSE_DRAW_LOGS=0`; preview `Get_Layer_State` also ran prune/ensure every export before live match.
+- **Fix:** `AELORIA_QUIET=1` set by `Launch-Aeloria.ps1` for non-`-DebugMode` sessions; `g_AeloriaQuietMode` gates noisy critical prefixes in `DLLInterface.cpp` / `OBJECT.H`; preview prune/ensure throttled to every N frames until explicit live match. Milestone prefixes (`LIVE_SKIRMISH_ARMED`, `SCENARIO_TRACKING_CLEARED`, etc.) remain unthrottled.
+
+## E.2.51 (late-game REDALERT.DLL AV — `000b7fdf`)
+
+- **Symptom:** Skirmish crash ~frame 58 659 (`1c4c2d18-c1be`); WER `REDALERT.DLL+0x000b7fdf`.
+- **Cause:** `Get_Layer_State` layer walk → `Draw_It` → `Techno_Draw_Object` on pool-reused techno with stale `Class`/`+8` after `TRACKING_PRUNE` at scale; object still exported in bulk/sustain slots.
+- **Fix:** Budgeted `LATE_GAME_AV_GUARD` logging; `Aeloria_GuardExportObjectPtr` on intercept/bulk/sustain/factory/shadow export paths; `Aeloria_TechnoClassRawIsHealthy` gate before `Draw_It` in layer walk. Symbolized to `TechnoClass::Techno_Draw_Object` (+0x2f). See `Docs/AELORIA-RCA-SKIRMISH-CRASH-20260702.md`.
+
+<!-- E.2.52 (Start transition hardening) skipped — no repro after E.2.49–51; conditional per unified plan PR 4. -->
+
 ## E.2.45 (preview tracking prune — 56d04f08)
 
 - **Symptom:** `DEAD_TRACKING_PRUNED creation=11` @ frame 0 on `Get_Layer_State_preview` → `Unit guard passed` @ frame 18.
