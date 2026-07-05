@@ -33,10 +33,13 @@ From `Docs/AELORIA-STATUS-20260620.md` and `Scripts/Analyze-AeloriaSoak.ps1`:
 | `5f1f8c7f` | 26 | E.2.42 deployed | `Unit guard passed` 2TNK → `Techno_Draw_Object` (PREVIEW, no live arm) |
 | `885446a6-f040` | 4135 | E.2.45 | Preview `DEAD_TRACKING_PRUNED creation=11` @0; MCV `Unit guard passed` @3159 (PREVIEW, no live arm) |
 | `3f9170a1-e136` | 283 | E.2.46 smoke | M0 lifecycle gates PASS; tail `CC_Draw_Shape` RTTI=5 `at+8=0xffffff00` (family B) |
+| `1c4c2d18-c1be` | 58659 | E.2.47–48, non-debug soak ~34 min | WER `REDALERT.DLL` `c0000005` offset **`000b7fdf`**; log ends without `SESSION_END` (family D — late game) |
 
 **E.2.47–E.2.48 (experimental):** preview building bad+8 placeholder; preview starting-unit legacy MAIN block after creation prune + unhealthy Class belt.
 
-North star: **0 / 6** recent sessions pass P4.
+**E.2.51 (planned):** late-game AV at `DLL+0x000b7fdf` — tracking/LAYERS/construction hot path under long-session scale.
+
+North star: **0 / 7** recent sessions pass P4.
 
 ---
 
