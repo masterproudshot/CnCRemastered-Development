@@ -237,6 +237,10 @@ if ($launcherExitClean -and $sessionEndKind -eq 'INCONCLUSIVE' -and -not $abrupt
 $layersMaxCount = 0
 $layersNearCapSites = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
 $layersCapDropTotal = 0
+$layersTrimBandLines = @($content | Where-Object { $_ -match 'LAYERS_TRIM_BAND' })
+$layersTotalClampBlind = @($content | Where-Object { $_ -match 'LAYERS_CAP_DROP.*site=total_clamp\b' })
+$layersTotalClampFair = @($content | Where-Object { $_ -match 'LAYERS_CAP_DROP.*site=total_clamp_fair' })
+$layersWalkSkipLate = 0
 foreach ($line in $content) {
     if ($line -match 'LAYERS_NEAR_CAP count=(\d+)') {
         $c = [int]$Matches[1]
@@ -246,7 +250,12 @@ foreach ($line in $content) {
     if ($line -match 'LAYERS_CAP_DROP.*dropped=(\d+)') {
         $layersCapDropTotal += [int]$Matches[1]
     }
+    if ($line -match 'LAYERS_CAP_DROP.*site=layer_walk_skip' -and $line -match 'frame=(\d+)') {
+        $f = [int]$Matches[1]
+        if ($f -ge 4500) { $layersWalkSkipLate++ }
+    }
 }
+$layersClampWithoutNearCap = ($layersTotalClampBlind.Count -gt 0 -or $layersTotalClampFair.Count -gt 0) -and $layersNearCap.Count -eq 0
 
 # Perf hint: log lines per logic frame (high ratio => verbose/throttle regression)
 $linesPerFrame = if ($maxFrame -gt 0) { [math]::Round($lineCount / $maxFrame, 2) } else { 0 }
@@ -364,6 +373,10 @@ Write-Host "Session end: $sessionEndKind (abruptTail=$abruptTail)" -ForegroundCo
 Write-Host "Tank unlimbos: $($tankUnlimbos.Count) | Jeep: $($jeepUnlimbos.Count) | Any produced: $($anyProducedUnlimbo.Count)"
 Write-Host "Harvester relocate last frame: $lastHarvesterRelocateFrame | Bulk stomp: $($bulkStomp.Count) | Bulk idx gap: $bulkIdxGap | Foot sustain spam: $footSustainSpam"
 Write-Host "LAYERS: near-cap events=$($layersNearCap.Count) cap-drop events=$($layersCapDrop.Count) maxCount=$layersMaxCount sites=$($layersNearCapSites.Count) droppedTotal=$layersCapDropTotal"
+Write-Host "LAYERS E.2.59: trim_band=$($layersTrimBandLines.Count) total_clamp_fair=$($layersTotalClampFair.Count) blind_clamp=$($layersTotalClampBlind.Count) walk_skip_late=$layersWalkSkipLate"
+if ($layersClampWithoutNearCap) {
+    Write-Host "WARN: total_clamp without prior LAYERS_NEAR_CAP (unexpected cap pressure)" -ForegroundColor Yellow
+}
 if ($null -ne $wallClockMinutes) { Write-Host "Wall clock (visible->exit): $([math]::Round($wallClockMinutes, 1)) min" }
 Write-Host "Produced first draw VIRTUAL/MAIN: $($producedFirstDrawVirtual.Count)/$($producedFirstDrawMain.Count)"
 if ($crashZip) { Write-Host "Crash zip: $crashZip" -ForegroundColor Yellow }

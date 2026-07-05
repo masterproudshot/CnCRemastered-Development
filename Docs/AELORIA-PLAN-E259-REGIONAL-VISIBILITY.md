@@ -1,7 +1,7 @@
 # E.2.59 — Late-game regional object invisibility (LAYERS cap fairness)
 
 **Branch:** `experimental`  
-**Status:** Planned (post soak `d693a684-49e9`)  
+**Status:** Implemented in DLL (soak V2 pending; anchor soak `d693a684-49e9`)  
 **North star link:** Visible/selectable/orderable units **across full map** for 20–30+ min, not only launch / north band.
 
 ## User symptom (evidence)

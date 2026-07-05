@@ -78,6 +78,14 @@ E.2.41 **removed frame-1 arm** and tied live arm to **`CNC_Start_Mission_Timer`*
 - `LIVE_SKIRMISH_ARMED via Advance_glyphx_skirmish_sim frame=1`.
 - **Cause:** Treating lobby as live match; violates lifecycle model (fixed in E.2.41).
 
+### Failure mode E — late-game regional object invisibility (`d693a684-49e9`, E.2.59)
+
+- Long `-NC` soak after E.2.56+58: **no crash**, launch visibility OK, good perf.
+- ~10–15 min wall clock: **bottom ~⅓** of map — **buildings + units invisible**; **ground + ore/gems still visible**.
+- **Cause (hypothesis):** `Get_Layer_State` fills ≤512 `CNCObjectStruct` slots; `Aeloria_TrimDrawCountPreferRetain`, blind `total_clamp`, and `layer_walk_skip` at cap drop **late layer-walk / southern-band** objects from the client list while sim + terrain paths continue.
+- **Fix (E.2.59):** `Aeloria_LayersSlotRetainPriorityV2`, Y-third quota trim when `count ≥ 480`, `Aeloria_ClampLayersListFair` (`total_clamp_fair`), soft `layer_walk_skip` for underrepresented bands; `LAYERS_TRIM_BAND` diagnostics.
+- **Forensics:** soak log `d693a684-49e9` not located under `Logs/` at plan time — correlate `LAYERS_CAP_DROP` / `total_clamp` on next repro.
+
 ### Failure mode D — late game ~58k frames (`1c4c2d18-c1be`, E.2.51)
 
 - Non-debug soak ~34 min; log ends without `SESSION_END` at frame **58659**.

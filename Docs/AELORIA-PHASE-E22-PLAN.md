@@ -170,11 +170,12 @@ Soak `d8ee4506-c453` (74 min PASS); log `Logs/Aeloria-Debug_20260627_165256_d8ee
 
 <!-- E.2.52 (Start transition hardening) skipped — no repro after E.2.49–51; conditional per unified plan PR 4. -->
 
-## E.2.59 (late-game regional object invisibility — planned)
+## E.2.59 (late-game regional object invisibility)
 
 - **Symptom:** Soak `d693a684-49e9` — stable long `-NC` session; ~10–15 min **bottom third** loses buildings/units; ground + resources remain.
-- **Cause (hypothesis):** 512 LAYERS cap + `Aeloria_TrimDrawCountPreferRetain` / `total_clamp` favor early walk order and `LayersSlotRetainPriority` (starting units + human buildings), dropping late-walk / southern band objects from client list.
-- **Fix (plan):** Fair trim with per-map-Y-band quotas; clamp selection before truncate; optional late sustain lite; analyzer band metrics. See `Docs/AELORIA-PLAN-E259-REGIONAL-VISIBILITY.md`.
+- **Cause (hypothesis):** 512 LAYERS cap + `Aeloria_TrimDrawCountPreferRetain` / `total_clamp` / `layer_walk_skip` favor early walk order and narrow retain priority, dropping late-walk / southern band objects from client list.
+- **Fix:** `Aeloria_LayersSlotRetainPriorityV2` (human technos); Y-third quota in `Aeloria_TrimDrawCountPreferRetain` when `≥480`; `Aeloria_ClampLayersListFair` (`total_clamp_fair`); soft `layer_walk_skip` via band histogram; `LAYERS_TRIM_BAND` logs; rollback `AELORIA_LAYERS_FAIR_TRIM=0`. Analyzer trim/clamp summary.
+- **Acceptance:** V2 20+ min bottom-third visibility; P4 `max_frame≥7500`; no E.2.56+58 regression.
 
 ## E.2.58 (preview map-building bulk populate)
 
