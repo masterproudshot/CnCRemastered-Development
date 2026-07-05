@@ -150,6 +150,12 @@ Soak `d8ee4506-c453` (74 min PASS); log `Logs/Aeloria-Debug_20260627_165256_d8ee
 - **Cause:** `g_AeloriaExplicitLiveMatch` only set in `CNC_Start_Mission_Timer` (often missing in log); preview `DLL_Draw_Intercept` still populated client slots; unsafe `OverrideDisplayName` / HUD fields on under-construction buildings.
 - **Fix:** E.2.38 Advance fallback when `MissionTimer.Is_Active()` (set explicit live + TryArm + exemption refresh); preview intercept early return when `!Aeloria_MatchLayerExportAllowed()`; `Aeloria_PopulateTechnoHudFields` + safe display name; `LIVE_MATCH_ARM_ATTEMPT` / `PREVIEW_LAYER_EXPORT` logs.
 
+## E.2.49 (LAYERS 512 cap instrumentation)
+
+- **Symptom:** North star needs visibility into client LAYERS buffer pressure; E.2.32 guards silently dropped/skipped slots with no soak metrics.
+- **Cause:** 512-cap guards in `DLL_Draw_Intercept`, layer-walk trim, foot sustain, bulk/sustain idx, and final `Count` clamp had no structured logging.
+- **Fix:** `LAYERS_NEAR_CAP` when count ≥ 480; `LAYERS_CAP_DROP` at each E.2.32 guard site (intercept guard/inc, layer-walk skip/trim, foot sustain, bulk/sustain idx, total clamp). Layer-walk trim prefers retaining tracked starting units and human-deployed buildings. `Analyze-AeloriaSoak.ps1` P4/NS summary counts `LAYERS_*` events.
+
 ## E.2.45 (preview tracking prune — 56d04f08)
 
 - **Symptom:** `DEAD_TRACKING_PRUNED creation=11` @ frame 0 on `Get_Layer_State_preview` → `Unit guard passed` @ frame 18.

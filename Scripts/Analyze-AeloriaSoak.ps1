@@ -82,6 +82,8 @@ foreach ($line in $content) {
         $pendingBulkMaxIdx = -1
     }
 }
+$layersNearCap = @($content | Where-Object { $_ -match 'LAYERS_NEAR_CAP' })
+$layersCapDrop = @($content | Where-Object { $_ -match 'LAYERS_CAP_DROP' })
 $producedBulkDefer = @($content | Where-Object { $_ -match 'PRODUCED_UNIT_BULK_DEFER' })
 $producedFirstDrawVirtual = @($content | Where-Object { $_ -match 'PRODUCED_UNIT_FIRST_DRAW.*window=VIRTUAL' })
 $producedFirstDrawMain = @($content | Where-Object { $_ -match 'PRODUCED_UNIT_FIRST_DRAW.*window=MAIN' })
@@ -295,6 +297,9 @@ if ($Profile -eq 'P1' -and $lineCount -gt 200000) {
 }
 Write-Host "Tank unlimbos: $($tankUnlimbos.Count) | Jeep: $($jeepUnlimbos.Count) | Any produced: $($anyProducedUnlimbo.Count)"
 Write-Host "Harvester relocate last frame: $lastHarvesterRelocateFrame | Bulk stomp: $($bulkStomp.Count) | Bulk idx gap: $bulkIdxGap | Foot sustain spam: $footSustainSpam"
+if ($Profile -eq 'P4' -or $Profile -eq 'NS') {
+    Write-Host "LAYERS near cap: $($layersNearCap.Count) | LAYERS cap drop: $($layersCapDrop.Count)"
+}
 if ($null -ne $wallClockMinutes) { Write-Host "Wall clock (visible->exit): $([math]::Round($wallClockMinutes, 1)) min" }
 Write-Host "Produced first draw VIRTUAL/MAIN: $($producedFirstDrawVirtual.Count)/$($producedFirstDrawMain.Count)"
 if ($crashZip) { Write-Host "Crash zip: $crashZip" -ForegroundColor Yellow }
