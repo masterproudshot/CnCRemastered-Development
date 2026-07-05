@@ -9,8 +9,8 @@
 | Wave | PRs | Status | Gate |
 |------|-----|--------|------|
 | 0 | PR 0 docs | done | docs in repo |
-| 1 | PR 1 E.2.50, PR 8 B0 | pending | MSBuild |
-| 2 | PR 2 E.2.51, PR 9 B1 | pending | late-AV symbol notes |
+| 1 | PR 1 E.2.50, PR 8 B0 | done | MSBuild |
+| 2 | PR 2 E.2.51, PR 9 B1 | done | late-AV symbol notes |
 | 3 | PR 3 E.2.49, PR 10 B2 | pending | layers instrumentation |
 | 4 | PR 4 E.2.52*, PR 11 B3 | pending | *PR4 conditional |
 | 5 | PR 5 C1–C3 | pending | analyzer |
