@@ -56,3 +56,12 @@ Launchers/Deprecated/
 
 # Personal / local scripts
 Scripts/Rebuild-And-Deploy.ps1
+
+# Agent / IDE scratch (not product source)
+agent-tools/
+.codegraph/
+terminals/
+worktrees/
+
+# Local map-gen iteration (catalog in Docs/CUSTOM-MAPS-CATALOG.md)
+GeneratedMaps/

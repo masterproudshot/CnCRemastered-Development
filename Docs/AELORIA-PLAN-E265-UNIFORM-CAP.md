@@ -32,6 +32,12 @@ No `y_third`, no `LAYERS_TRIM_BAND`, no histogram skip at cap.
 - G4: no WER @ 30+ min.
 - Logs: `LAYERS_SLOT_REPLACE idx=…` / `mode=draw_it`; `total_clamp_uniform` if overflow trim.
 
+## Soak
+
+| ID | Result |
+|----|--------|
+| `c35496c3-7951` | User: no visibility/crash issues ~30 min; **wall clock felt slow** |
+
 ## Verify
 
 ```powershell

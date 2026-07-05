@@ -17,7 +17,8 @@
 | 6 | PR 6 B4, PR 7 A5 | done | map integration + promote docs |
 | 7 | E.2.56+58 populate | done | soak `d693a684` launch visibility OK |
 | 8 | User soak (stability/perf) | done | long `-NC`, no crash, good speed |
-| 9 | E.2.65 uniform LAYERS cap | **implemented** — soak pending | removed Y-third policy; uniform replace/trim; infantry LAYERS graduate |
+| 9 | E.2.65 uniform LAYERS cap | **G1 soak pass** `c35496c3-7951` | visibility OK; **perf slow** → wave 10 |
+| 10 | E.2.66+ perf @ cap | **next** | reshuffle cadence, sustain/foot cost, log I/O |
 
 ## User gates
 

@@ -1,7 +1,7 @@
 # Aeloria compact handoff (`/compact`)
 
 **Branch:** `experimental`  
-**Parent:** `90f9c41` · **DLL submodule:** `f7a929e` (E.2.61 + E.2.59b + **E.2.61b** QE major fixes)
+**Parent:** see `git log -1` · **DLL submodule:** `improvements` @ **E.2.65** (`7047646`)
 
 ## North star
 
@@ -11,28 +11,20 @@
 
 | ID | Result |
 |----|--------|
-| `1f5f201c-7d98` | **G1 partial** — ~bottom **10%** blank; **no crash** ~**53k** frames; **26k+** `LAYERS_SLOT_REPLACE` (61b) |
-| `f6af36ce-05b0` | **G1 FAIL** — south third blank ~frame **16459**; **crash ~61214**; zero replace |
-| `d693a684-49e9` | Stable long run, south blank (anchor pre-59) |
+| `c35496c3-7951` | **G1/G4 PASS** (user) — full map OK, ~**30 min**, no crash; **perf: slow** |
+| `1f5f201c-7d98` | G1 partial (~bottom 10% blank); 61b; ~53k frames |
+| `f6af36ce-05b0` | G1 fail + crash @ ~61k (pre-replace) |
 
-**Next plan:** `Docs/AELORIA-PLAN-E262-SOUTH-REMAINDER.md`
+## Landed (E.2.65)
 
-## E.2.61b (landed)
-
-QE bugs 1–3 (`Docs/AELORIA-REVIEW-E261-E259b-QE.md`):
-
-1. **Preview strip** — `StripUnsafeDrawSlots` no-op on preview walk; retain populate/priority on live.
-2. **Replace at cap** — `Draw_It` into evicted slot (`mode=draw_it`); `drawSlotBase` for factory/shadow; no `TotalObjectCount +=` on in-place replace.
-3. **Stab map** — `OnLayersSlotReplaced` after bulk + draw-it replace.
-
-**Rollback:** `AELORIA_LAYERS_SLOT_REPLACE=0`, `AELORIA_LAYERS_FAIL_CLOSED=0`, `AELORIA_LAYERS_FAIR_TRIM=0`
+Uniform cap: `Aeloria_LayersUniformCompactSlots`, tail LRU evict, no `y_third`. Infantry `InfantryLayersExportReady`, foot replace @ 512. Plan: `Docs/AELORIA-PLAN-E265-UNIFORM-CAP.md`.
 
 ## Next
+
+**P0 perf** — `Docs/AELORIA-NEXT-ROUNDS.md` (reshuffle cadence, sustain scan, log throttle).
 
 ```powershell
 .\Scripts\Launch-Aeloria.ps1 -Profile Experimental -BuildFirst -AutoDeployDll -NC
 ```
-
-P0: 5 min preview MCV/buildings selectable; 15+ min south third; 30+ min no WER. Analyze with `.\Scripts\Analyze-AeloriaSoak.ps1`. Deferred: foot_sustain/preview_safe_emit replace, reshuffle cadence, E.2.60.
 
 **Code:** `Source/Rampastring-MoreQoL/REDALERT/DLLInterface.cpp`
