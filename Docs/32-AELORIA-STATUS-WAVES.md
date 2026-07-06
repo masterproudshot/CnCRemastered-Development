@@ -23,7 +23,7 @@
 ## User gates
 
 - **G-W7a:** After WAVE-5 — 5+ min post-Start (Fix-M1).
-- **G-W7b:** After WAVE-6 — 20–30 min `Launch-Aeloria.ps1 -Profile Experimental -NC`, run `Analyze-AeloriaSoak.ps1 -Profile P4`.
+- **G-W7b:** After WAVE-6 — indefinite play `Launch-Aeloria.ps1 -Profile Experimental -NC` (no artificial duration caps), run `Analyze-AeloriaSoak.ps1 -Profile P4`. (Historical `max_frame` targets are testing milestones only.)
 
 ## Evidence anchors
 

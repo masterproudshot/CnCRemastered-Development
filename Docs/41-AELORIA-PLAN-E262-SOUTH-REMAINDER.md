@@ -35,7 +35,7 @@ From `Aeloria-Debug_20260705_015139_1f5f201c-7d98.log`:
 
 ## North star (unchanged)
 
-4p Experimental skirmish: menus OK; units **visible / selectable / orderable** (human + AI) **full map**; **20–30+ min** (`max_frame ≥ 7500`); full-zoom mods; **no WER**. No frame-1 `LIVE_SKIRMISH_ARMED`. **512 cap** not raised.
+4p Experimental skirmish: menus OK; units **visible / selectable / orderable** (human + AI) **full map indefinitely** (no artificial duration caps); full-zoom mods; **no WER**. No frame-1 `LIVE_SKIRMISH_ARMED`. **512 cap** not raised.
 
 ---
 
@@ -132,4 +132,4 @@ From `Aeloria-Debug_20260705_015139_1f5f201c-7d98.log`:
 3. **PR4** (ops + gates)  
 4. **PR5** (if CPU or log size hurts)
 
-**Docs to update on merge:** `AELORIA-PHASE-E22-PLAN.md` (E.2.62–64 entries), `AELORIA-STATUS-WAVES.md` wave 9 → **done** when G1 passes, `AELORIA-RCA-SKIRMISH-CRASH-20260702.md` visibility family E addendum (`1f5f201c`).
+**Docs to update on merge:** `37-AELORIA-PHASE-E22-PLAN.md` (E.2.62–64 entries), `32-AELORIA-STATUS-WAVES.md` wave 9 → **done** when G1 passes, `43-AELORIA-RCA-SKIRMISH-CRASH-20260702.md` visibility family E addendum (`1f5f201c`).

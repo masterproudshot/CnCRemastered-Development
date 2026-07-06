@@ -1,7 +1,7 @@
 # North star path — E.2.45+ (mirror)
 
 **Authoritative execute plan:** `Docs/AELORIA-NORTHSTAR-UNIFIED-PLAN.md`  
-**Wave checklist:** `Docs/AELORIA-STATUS-WAVES.md`
+**Wave checklist:** `Docs/32-AELORIA-STATUS-WAVES.md`
 
 Unified multi-agent stack: PR 0–11 (Lane A runtime E.2.49–52, Lane B MapGen B0–B4, Lane C tooling). Linearized merge: 0 → 8 → 1 → 9 → 2 → 10 → 3 → 11 → 4 → 5 → 6 → 7.
 

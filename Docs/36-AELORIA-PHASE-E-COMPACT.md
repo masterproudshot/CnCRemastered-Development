@@ -1,7 +1,7 @@
 # Aeloria Phase E — Compact Handoff (2026-06-22)
 
 ## North stars
-1. **Primary:** 4p Aeloria skirmish 20–30+ min, full zoom, no crash.
+1. **Primary:** 4p Aeloria skirmish indefinitely (no artificial time limits), full zoom, no crash.
 2. **Secondary:** Smooth play under unit load; gameplay parity (VFX, helis, HUD).
 
 ## Validated (session `c244e5d0-6cfa`, Experimental Phase D DLL)

@@ -2,9 +2,9 @@
 
 > **Status:** Executing — master orchestrator WAVE-0+.  
 > **Branch:** `experimental` only (parent repo + `Source/Rampastring-MoreQoL` submodule `improvements`).  
-> **North star:** Custom **4p+ skirmish** on **Experimental**, stable menus, **visible/selectable/orderable** units (human + AI), **20–30+ min** sessions (`max_frame ≥ 7500`), full-zoom mods, **no crash**. Reference-quality **126×126** procedural maps (not flat clear + ore printout).
+> **North star:** Custom **4p+ skirmish** on **Experimental**, stable menus, **visible/selectable/orderable** units (human + AI) **indefinitely** on modern hardware (no artificial duration caps — `max_frame` numbers are testing milestones only), full-zoom mods, **no crash**. Reference-quality **126×126** procedural maps (not flat clear + ore printout).
 
-See `Docs/AELORIA-STATUS-WAVES.md` for live wave checklist.
+See `Docs/32-AELORIA-STATUS-WAVES.md` for live wave checklist.
 
 ## Key Decisions
 
@@ -19,7 +19,7 @@ See `Docs/AELORIA-STATUS-WAVES.md` for live wave checklist.
 ### PR 0: Roadmap and unified status doc
 
 - **Description:** Docs mirror, RCA `1c4c2d18`, STATUS-WAVES.
-- **Files/components affected:** `Docs/AELORIA-NORTHSTAR-UNIFIED-PLAN.md`, `Docs/AELORIA-PLAN-E245-NORTHSTAR-PATH.md`, `Docs/AELORIA-RCA-SKIRMISH-CRASH-20260702.md`, `Docs/AELORIA-STATUS-WAVES.md`
+- **Files/components affected:** `Docs/31-AELORIA-NORTHSTAR-UNIFIED-PLAN.md`, `Docs/39-AELORIA-PLAN-E245-NORTHSTAR-PATH.md`, `Docs/43-AELORIA-RCA-SKIRMISH-CRASH-20260702.md`, `Docs/32-AELORIA-STATUS-WAVES.md`
 - **Dependencies:** None
 
 ### PR 1: E.2.50 — Non-debug performance (quiet critical path)
@@ -37,14 +37,14 @@ See `Docs/AELORIA-STATUS-WAVES.md` for live wave checklist.
 ### PR 3: E.2.49 — LAYERS visibility / 512 cap instrumentation
 
 - **Description:** `LAYERS_CAP_DROP` / `LAYERS_NEAR_CAP`; analyzer summary.
-- **Files/components affected:** `Source/Rampastring-MoreQoL/REDALERT/DLLInterface.cpp`, `Scripts/Analyze-AeloriaSoak.ps1`, `Docs/AELORIA-PHASE-E22-PLAN.md`
+- **Files/components affected:** `Source/Rampastring-MoreQoL/REDALERT/DLLInterface.cpp`, `Scripts/Analyze-AeloriaSoak.ps1`, `Docs/37-AELORIA-PHASE-E22-PLAN.md`
 - **Dependencies:** PR 2
 
 ### PR 4: E.2.52 — Start transition hardening (conditional) — **SKIPPED**
 
 - **Status:** Skipped 2026-07-04 — no Start-transition repro after E.2.47–E.2.51; late crash was family D @ ~58k frames (`1c4c2d18-c1be`), addressed by E.2.51. No DLL change.
 - **Description:** Start/@2426 only if repro; else doc skip. **Gate not met** — documented skip in RCA + STATUS-WAVES.
-- **Files/components affected:** `Docs/AELORIA-RCA-SKIRMISH-CRASH-20260702.md`, `Docs/AELORIA-STATUS-WAVES.md` (docs only)
+- **Files/components affected:** `Docs/43-AELORIA-RCA-SKIRMISH-CRASH-20260702.md`, `Docs/32-AELORIA-STATUS-WAVES.md` (docs only)
 - **Dependencies:** PR 3
 - **Re-open when:** New soak shows abrupt tail at Start (~2426) with preview intercept storm and no `LIVE_SKIRMISH_ARMED`.
 
@@ -63,7 +63,7 @@ See `Docs/AELORIA-STATUS-WAVES.md` for live wave checklist.
 ### PR 7: A5 — Promote readiness docs + E.22 table
 
 - **Description:** E.2.49–52 docs; Stable criteria draft.
-- **Files/components affected:** `Docs/AELORIA-PHASE-E22-PLAN.md`, `Docs/10-Aeloria-Stable-v1-Release-Notes.md`, `Docs/HANDOFF-TO-NEW-OWNER-20260607.txt`
+- **Files/components affected:** `Docs/37-AELORIA-PHASE-E22-PLAN.md`, `Docs/10-Aeloria-Stable-v1-Release-Notes.md`, `Docs/HANDOFF-TO-NEW-OWNER-20260607.txt`
 - **Dependencies:** PR 5, PR 6
 
 ### PR 8: B0 — Commit map tooling and local iteration docs

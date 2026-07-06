@@ -4,7 +4,7 @@
 **Scope:** `REDALERT/DLLInterface.cpp`, `Analyze-AeloriaSoak.ps1`, phase/wave/RCA docs  
 **Verdict:** **Ship with fixes** — soak-worthy for validation, but address **2 major** items before calling G1/G4 done.
 
-**Update (E.2.61b `f7a929e`):** Major bugs 1–3 patched — see `Docs/AELORIA-COMPACT-HANDOFF.md`.
+**Update (E.2.61b `f7a929e`):** Major bugs 1–3 patched — see `Docs/33-AELORIA-COMPACT-HANDOFF.md`.
 
 ---
 

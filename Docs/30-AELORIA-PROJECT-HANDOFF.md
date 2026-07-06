@@ -11,7 +11,7 @@
 Playable **4p+ Experimental skirmish** on Remastered:
 
 - Menus and launch OK  
-- Units **visible, selectable, orderable** (human + AI) for **20–30+ min** (`max_frame ≥ 7500`)  
+- Units **visible, selectable, orderable** (human + AI) **indefinitely** on modern hardware (no artificial time limits; `max_frame` targets are for testing milestones only)  
 - Full-zoom mod stack  
 - **No WER / hard crash** on long soaks  
 - **No frame-1 `LIVE_SKIRMISH_ARMED`**  
@@ -32,7 +32,7 @@ This is **not** “every sim entity on the map in the client buffer at once.” 
 
 **Primary code:** `Source/Rampastring-MoreQoL/REDALERT/DLLInterface.cpp`  
 **Launch / soak:** `Scripts/Launch-Aeloria.ps1`, `Scripts/Analyze-AeloriaSoak.ps1`  
-**Plans / RCA:** `Docs/AELORIA-PHASE-E22-PLAN.md`, `Docs/AELORIA-RCA-SKIRMISH-CRASH-20260702.md`
+**Plans / RCA:** `Docs/37-AELORIA-PHASE-E22-PLAN.md`, `Docs/43-AELORIA-RCA-SKIRMISH-CRASH-20260702.md`
 
 ---
 
@@ -112,10 +112,10 @@ Remastered draws from a **512-slot LAYERS export** built each `Get_Layer_State`.
 
 | Doc | Use |
 |-----|-----|
-| `AELORIA-COMPACT-HANDOFF.md` | `/compact` paste block |
-| `AELORIA-NEXT-ROUNDS.md` | Active engineering queue |
+| `33-AELORIA-COMPACT-HANDOFF.md` | `/compact` paste block |
+| `35-AELORIA-NEXT-ROUNDS.md` | Active engineering queue |
 | `AELORIA-PLAN-E265-UNIFORM-CAP.md` | Uniform cap design |
-| `AELORIA-STATUS-WAVES.md` | Wave table |
+| `32-AELORIA-STATUS-WAVES.md` | Wave table |
 | `archive/bugfixer-411/` | Old agent audits (reference only) |
 
 ---

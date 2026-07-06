@@ -2,7 +2,7 @@
 
 **Branch:** `experimental`  
 **Status:** Implemented in DLL (soak V2 pending; anchor soak `d693a684-49e9`)  
-**North star link:** Visible/selectable/orderable units **across full map** for 20–30+ min, not only launch / north band.
+**North star link:** Visible/selectable/orderable units **across full map indefinitely** (no artificial time limits), not only launch / north band.
 
 ## User symptom (evidence)
 
@@ -71,7 +71,7 @@
 ### Phase 3 — Analyzer + docs
 
 - `Analyze-AeloriaSoak.ps1`: P4/NS checks for `LAYERS_TRIM_BAND`, cap drops per minute, flag if `total_clamp` without prior `NEAR_CAP`.
-- `AELORIA-PHASE-E22-PLAN.md` E.2.59 entry; `AELORIA-STATUS-WAVES.md` wave 9 row.
+- `37-AELORIA-PHASE-E22-PLAN.md` E.2.59 entry; `32-AELORIA-STATUS-WAVES.md` wave 9 row.
 
 ## Verification ladder
 
