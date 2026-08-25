@@ -9,6 +9,8 @@
 Options:
   -P, -Profile <name>   Target profile (Experimental, Stable, or Vanilla-Plus).
                         Shows interactive selector if omitted.
+    -LaunchMode <mode>    Launch method: SteamId (default), ClientG, or ClientLauncherG.
+                                                ClientG and ClientLauncherG start the corresponding game executable directly.
   -D, -DebugMode        Launch the game with debug flags (MOD_DEBUG) and force Aeloria verbose draw
                         diagnostics logging on via AELORIA_ENABLE_VERBOSE_DRAW_LOGS=1 env var.
                         This makes the full per-object "got Object / guard passed / about-to-call" logs
@@ -18,6 +20,9 @@ Options:
                         As soon as you close the game, the script continues instantly with no polling delays.
                         The Aeloria debug log is automatically collected into the Logs\ folder with a matching
                         short ID for easy correlation with the launcher log.
+  -TR, -ShowTickRate    Show the engine logic tick rate in the in-game message list every 30 seconds.
+                        The client's own FPS readout is the RENDER rate and is always ~60; this is the
+                        SIMULATION rate, which is what actually drops when the game feels slow.
   -B, -BuildFirst       Build the RedAlert project using MSBuild before deploying the DLL.
                         Prefers 2017-era MSBuild (for PlatformToolset=v145) when the VS 2017 C++ build tools
                         (v141/v145) components are installed via Visual Studio Installer. Always forces
@@ -55,6 +60,9 @@ param(
     [Alias("P")]
     [string]$Profile,
 
+    [ValidateSet("SteamId","ClientG","ClientLauncherG")]
+    [string]$LaunchMode = "SteamId",
+
     [Alias("D")]
     [switch]$DebugMode,
 
@@ -70,7 +78,27 @@ param(
     # Do not remove the deployed mod folder from the live Documents location after the game exits.
     # Use this for "daily driver" Stable use so that simple .bat launchers continue to work afterward.
     [Alias("NC", "Permanent")]
-    [switch]$NoCleanup
+    [switch]$NoCleanup,
+
+    # Dump the full client object list every N frames (0 = off). Sets AELORIA_TRACE_EXPORT.
+    # Use with -DebugMode. 300 is a good starting cadence; 60 for chasing a flicker.
+    [Alias("TE")]
+    [int]$TraceExport = 0,
+
+    # Show the engine logic tick rate in the in-game message list every 30 seconds.
+    # Sets AELORIA_TICK_BANNER. The client's own FPS readout is the RENDER rate and is always ~60;
+    # this is the SIMULATION rate, which is what drops when the game feels slow.
+    # NB: "F" is already taken by -ForceCleanup above.
+    [Alias("TR", "ShowFps")]
+    [switch]$ShowTickRate,
+
+    # Skip the legacy software renderer (Map.Render). Sets AELORIA_SKIP_LEGACY_RENDER.
+    # An ETW profile attributed 61% of all DLL time to that pass, which paints the legacy offscreen
+    # page that only "Original Graphics" mode reads -- a mode this mod cannot support anyway.
+    # EXPERIMENTAL: the WINDOW_MAIN draws it performs feed the Aeloria MAIN draw caches, so verify
+    # helicopters landing, ships at rest and newly produced units still render before relying on it.
+    [Alias("SLR")]
+    [switch]$SkipLegacyRender
 )
 
 $ErrorActionPreference = "Stop"
@@ -92,9 +120,9 @@ function Get-MSBuildPath {
     if (Test-Path $vswhere) {
         try {
             # Try to find any VS 2017 installation first (best compatibility for early object / packing)
-            $installPath = & $vswhere -version "[15.0,16.0)" -requires Microsoft.Component.MSBuild -property installationPath 2>$null | Select-Object -First 1
+            $installPath = & $vswhere -version "[15.0,44.0)" -prerelease -requires Microsoft.Component.MSBuild -property installationPath 2>$null | Select-Object -First 1
             if ($installPath) {
-                $msbuild2017 = Join-Path $installPath "MSBuild\15.0\Bin\MSBuild.exe"
+                $msbuild2017 = Join-Path $installPath "MSBuild\Current\Bin\MSBuild.exe"
                 if (Test-Path $msbuild2017) {
                     return $msbuild2017
                 }
@@ -189,10 +217,13 @@ function Invoke-AutoDeployDll {
 }
 
 # ====================== CONFIGURATION ======================
-$ProjectRoot = "C:\Users\jacks\Documents\CnCRemastered\Development"
-$SteamExe    = "C:\Program Files (x86)\Steam\steam.exe"
-$ClientGExe  = "C:\Program Files (x86)\Steam\steamapps\common\CnCRemastered\ClientG.exe"
-$ClientGDir  = "C:\Program Files (x86)\Steam\steamapps\common\CnCRemastered"
+$SteamBase   = if ($env:AEL_SteamBase)   { $env:AEL_SteamBase }   else { "C:\Program Files (x86)\Steam" }
+$ProjectRoot = if ($env:AEL_ProjectRoot) { $env:AEL_ProjectRoot } else { "C:\Users\jacks\Documents\CnCRemastered\Development" }
+$SteamExe    = "$SteamBase/steam.exe"
+$CNCSteamBase = "$SteamBase/steamapps/common/CnCRemastered"
+$ClientGExe  = "$CNCSteamBase/ClientG.exe"
+$ClientGDir  = "$CNCSteamBase"
+$ClientLauncherG = "$CNCSteamBase/ClientLauncherG.exe"
 $AppId       = "1213210"
 
 $LogDir      = Join-Path $ProjectRoot "Logs"
@@ -494,9 +525,24 @@ function Stop-StaleCnCProcesses {
 }
 
 function Start-CnCRemasteredGame {
-    param([string]$LaunchArgs)
+    param(
+        [string]$LaunchArgs,
+        [string]$LaunchMode
+    )
 
     Stop-StaleCnCProcesses
+
+    if ($LaunchMode -ne "SteamId") {
+        $gameExecutable = if ($LaunchMode -eq "ClientG") { $ClientGExe } else { $ClientLauncherG }
+        if (-not (Test-Path -LiteralPath $gameExecutable -PathType Leaf)) {
+            throw "Launch mode '$LaunchMode' requires '$gameExecutable', but it was not found."
+        }
+
+        Write-Log "Launching directly via $LaunchMode $gameExecutable $LaunchArgs" "INFO"
+        Start-Process -FilePath $gameExecutable -ArgumentList $LaunchArgs
+        return
+    }
+
     $steam = Ensure-SteamReady
 
     # Always -applaunch from the ps1 dev launcher. Direct ClientG.exe can fail DRM even when
@@ -614,6 +660,60 @@ try {
         Write-Log "Normal (non-Debug) session: AELORIA_ENABLE_VERBOSE_DRAW_LOGS explicitly set to 0 (verbose draw logs should be suppressed)" "INFO"
     }
 
+    # -TraceExport <frames>: dump the full client object list every <frames> frames. This is the
+    # list the Remastered client renders from, so it answers "is this object exported at all, and
+    # with what size / shape / asset". Opt-in: it is O(objects) per dump with a flush per line.
+    if ($TraceExport -gt 0) {
+        $env:AELORIA_TRACE_EXPORT = "$TraceExport"
+        Write-Log "AELORIA_TRACE_EXPORT=$TraceExport (client object list dumped every $TraceExport frames; look for EXPORT_SNAPSHOT_BEGIN / EXPORT_OBJ)" "INFO"
+    } else {
+        $env:AELORIA_TRACE_EXPORT = "0"
+    }
+
+    # -ShowTickRate / -TR: report the engine logic tick rate to the in-game message list every 30s.
+    # Off unless asked for, because it is the one diagnostic that calls into the client (On_Message).
+    if ($ShowTickRate) {
+        $env:AELORIA_TICK_BANNER = "1"
+        Write-Log "AELORIA_TICK_BANNER=1 (engine tick rate shown in the in-game message list every 30 seconds)" "INFO"
+    } else {
+        $env:AELORIA_TICK_BANNER = "0"
+    }
+
+    # -SkipLegacyRender / -SLR: skip Map.Render(), the legacy software pass. Profiling showed it is
+    # 61% of all DLL CPU time and it paints a page only Original Graphics mode reads.
+    if ($SkipLegacyRender) {
+        $env:AELORIA_SKIP_LEGACY_RENDER = "1"
+        Write-Log "AELORIA_SKIP_LEGACY_RENDER=1 (legacy Map.Render pass disabled - EXPERIMENTAL, check unit visibility)" "WARN"
+    } else {
+        $env:AELORIA_SKIP_LEGACY_RENDER = "0"
+    }
+
+    # ---------------------------------------------------------------------------------------------
+    # Diagnostics are passed to the DLL through environment variables, and a child process only
+    # inherits them if THIS script starts it. When Steam is already running, "-applaunch" is just an
+    # IPC request: the existing Steam process launches the game with the environment IT was started
+    # with, so every AELORIA_* variable set above is silently dropped.
+    #
+    # That is not hypothetical -- it is exactly why a run with -D -TR -TraceExport 60 produced
+    # "verbose_draw=0", no EXPORT_CENSUS lines and no tick-rate banner, while this log clearly showed
+    # all three variables being set. Warn loudly instead of letting it look like a DLL bug.
+    # ---------------------------------------------------------------------------------------------
+    $diagRequested = @()
+    if ($DebugMode)        { $diagRequested += "-D" }
+    if ($TraceExport -gt 0) { $diagRequested += "-TraceExport" }
+    if ($ShowTickRate)     { $diagRequested += "-TR" }
+    if ($SkipLegacyRender) { $diagRequested += "-SkipLegacyRender" }
+
+    if ($diagRequested.Count -gt 0 -and $LaunchMode -eq "SteamId") {
+        Write-Log "=============================================================================" "WARN"
+        Write-Log "Diagnostics requested ($($diagRequested -join ', ')) but LaunchMode is SteamId." "WARN"
+        Write-Log "If Steam is already running it spawns the game itself, so these AELORIA_*" "WARN"
+        Write-Log "environment variables will NOT reach the DLL and the diagnostics will be OFF." "WARN"
+        Write-Log "Re-run with -LaunchMode ClientLauncherG (or ClientG) so this script starts the" "WARN"
+        Write-Log "game directly and the variables are inherited." "WARN"
+        Write-Log "=============================================================================" "WARN"
+    }
+
     # Stage newest built DLL into the Development profile before copying to live.
     # -A alone: stage from last build output. -B: always re-stage after MSBuild (even without -A).
     $ShouldAutoDeployNow = $AutoDeployDll -and -not $BuildFirst
@@ -719,7 +819,7 @@ try {
     }
 
     Write-Log "Launch arguments: $launchArgs" "INFO"
-    Start-CnCRemasteredGame -LaunchArgs $launchArgs
+    Start-CnCRemasteredGame -LaunchArgs $launchArgs -LaunchMode $LaunchMode
 
     # Monitor
     Set-Variable -Name CurrentState -Scope Script -Value ([LauncherState]::Monitoring)
