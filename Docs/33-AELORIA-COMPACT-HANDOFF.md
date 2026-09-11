@@ -1,6 +1,6 @@
 # Aeloria compact handoff (`/compact`)
 
-**Full handoff:** `Docs/AELORIA-PROJECT-HANDOFF.md`
+**Full handoff:** `Docs/30-AELORIA-PROJECT-HANDOFF.md`
 
 **Branch:** `experimental` (uncommitted fixes post-edc270e) · **DLL:** Experimental profile (just built+deployed)
 

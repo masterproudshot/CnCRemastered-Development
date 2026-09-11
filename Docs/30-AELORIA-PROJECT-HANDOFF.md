@@ -114,7 +114,7 @@ Remastered draws from a **512-slot LAYERS export** built each `Get_Layer_State`.
 |-----|-----|
 | `33-AELORIA-COMPACT-HANDOFF.md` | `/compact` paste block |
 | `35-AELORIA-NEXT-ROUNDS.md` | Active engineering queue |
-| `AELORIA-PLAN-E265-UNIFORM-CAP.md` | Uniform cap design |
+| `42-AELORIA-PLAN-E265-UNIFORM-CAP.md` | Uniform cap design |
 | `32-AELORIA-STATUS-WAVES.md` | Wave table |
 | `archive/bugfixer-411/` | Old agent audits (reference only) |
 
